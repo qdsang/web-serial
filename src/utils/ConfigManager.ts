@@ -1,0 +1,94 @@
+import { ref, watch } from 'vue'
+
+interface SerialConfig {
+  baudRate: number
+  dataBits: number
+  stopBits: number
+  parity: string
+  flowControl: string
+}
+
+interface DisplayConfig {
+  showTime: boolean
+  showMs: boolean
+  showHex: boolean
+  showText: boolean
+  showNewline: boolean
+  autoScroll: boolean
+  timeOut: number
+}
+
+type ConfigKey = keyof typeof defaultConfigs
+
+const defaultConfigs = {
+  serial: {
+    baudRate: 115200,
+    dataBits: 8,
+    stopBits: 1,
+    parity: 'none',
+    flowControl: 'none'
+  } as SerialConfig,
+  
+  display: {
+    showTime: true,
+    showMs: false,
+    showHex: true,
+    showText: true,
+    showNewline: true,
+    autoScroll: false,
+    timeOut: 50
+  } as DisplayConfig
+}
+
+export class ConfigManager {
+  private static instance: ConfigManager
+  private configs: Record<string, any> = {}
+
+  private constructor() {
+    this.loadAllConfigs()
+  }
+
+  public static getInstance(): ConfigManager {
+    if (!ConfigManager.instance) {
+      ConfigManager.instance = new ConfigManager()
+    }
+    return ConfigManager.instance
+  }
+
+  private loadAllConfigs() {
+    for (const [key, defaultValue] of Object.entries(defaultConfigs)) {
+      const savedValue = localStorage.getItem(`config.${key}`)
+      this.configs[key] = savedValue ? { ...defaultValue, ...JSON.parse(savedValue) } : defaultValue
+    }
+  }
+
+  public getConfig<T extends ConfigKey>(key: T): typeof defaultConfigs[T] {
+    return this.configs[key] || defaultConfigs[key]
+  }
+
+  public setConfig<T extends ConfigKey>(key: T, value: Partial<typeof defaultConfigs[T]>) {
+    this.configs[key] = { ...this.configs[key], ...value }
+    localStorage.setItem(`config.${key}`, JSON.stringify(this.configs[key]))
+  }
+
+  public useConfig<T extends ConfigKey>(key: T) {
+    const config = ref(this.getConfig(key))
+
+    watch(config, (newValue) => {
+      this.setConfig(key, newValue)
+    }, { deep: true })
+
+    return config
+  }
+
+  public resetConfig(key: ConfigKey) {
+    this.configs[key] = { ...defaultConfigs[key] }
+    localStorage.setItem(`config.${key}`, JSON.stringify(this.configs[key]))
+  }
+
+  public resetAllConfigs() {
+    Object.keys(defaultConfigs).forEach(key => {
+      this.resetConfig(key as ConfigKey)
+    })
+  }
+}

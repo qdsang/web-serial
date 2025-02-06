@@ -1,0 +1,34 @@
+{
+  "name": "web-serial",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.3.3",
+    "@codemirror/lang-javascript": "^6.2.1",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@codemirror/view": "^6.36.2",
+    "@element-plus/icons-vue": "^2.3.1",
+    "@vueuse/core": "^12.5.0",
+    "element-plus": "^2.9.3",
+    "less": "^4.2.2",
+    "splitpanes": "^3.1.8",
+    "vue": "^3.5.13",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/tsconfig": "^0.7.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.1.0",
+    "vue-tsc": "^2.2.0"
+  }
+}
