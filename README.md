@@ -41,7 +41,7 @@
 
 ## 开发环境要求
 
-- Node.js >= 16.0.0
+- Node.js >= 18.0.0
 - 支持 Web Serial API 的现代浏览器（如 Chrome、Edge）
 
 ## 安装
