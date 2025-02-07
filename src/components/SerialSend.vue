@@ -1,30 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { SerialHelper } from '../utils/SerialHelper'
+import { ConfigManager } from '../utils/ConfigManager'
 
-const sendContent = ref('')
-const isHexSend = ref(false)
-const addCRLF = ref(false)
-const autoSend = ref(false)
-const autoSendInterval = ref(1000)
-const addChecksum = ref(false)
+const configManager = ConfigManager.getInstance()
+const sendConfig = configManager.useConfig('send')
+
 let autoSendTimer: number | null = null
 
 const serialHelper = SerialHelper.getInstance()
 
 const sendData = () => {
   try {
-    let content = sendContent.value
-    if (addCRLF.value) {
-      content += '\r\n'
+    let content = sendConfig.value.content
+    if (sendConfig.value.addCRLF) {
+      content += sendConfig.value.addCRLFType
     }
 
-    let data = serialHelper.stringToUint8Array(content, isHexSend.value)
-    if (addChecksum.value) {
+    let data = serialHelper.stringToUint8Array(content, sendConfig.value.isHexSend)
+    if (sendConfig.value.addChecksum) {
       data = serialHelper.appendChecksum(data)
     }
 
     window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
+    
+    // 添加到历史记录
+    if (content && !sendConfig.value.history.includes(sendConfig.value.content)) {
+      sendConfig.value.history.unshift(sendConfig.value.content)
+      if (sendConfig.value.history.length > sendConfig.value.historyMaxLength) {
+        sendConfig.value.history.pop()
+      }
+    }
   } catch (error) {
     console.error('发送数据时出错:', error)
     window.dispatchEvent(new CustomEvent('serial-error', { 
@@ -34,9 +39,8 @@ const sendData = () => {
 }
 
 const toggleAutoSend = () => {
-  // autoSend.value = !autoSend.value
-  if (autoSend.value) {
-    autoSendTimer = window.setInterval(sendData, autoSendInterval.value)
+  if (sendConfig.value.autoSend) {
+    autoSendTimer = window.setInterval(sendData, sendConfig.value.autoSendInterval)
   } else if (autoSendTimer) {
     clearInterval(autoSendTimer)
     autoSendTimer = null
@@ -44,55 +48,98 @@ const toggleAutoSend = () => {
 }
 
 const handleIntervalChange = (value: number) => {
-  autoSendInterval.value = value
-  if (autoSend.value && autoSendTimer) {
+  sendConfig.value.autoSendInterval = value
+  if (sendConfig.value.autoSend && autoSendTimer) {
     clearInterval(autoSendTimer)
     autoSendTimer = window.setInterval(sendData, value)
   }
 }
+
+let historyIndex = -1
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    sendData()
+    historyIndex = -1
+    return
+  }
+
+  const target = e.target as HTMLTextAreaElement
+  const cursorPosition = target.selectionStart
+  const contentBeforeCursor = sendConfig.value.content.slice(0, cursorPosition)
+  const isFirstLine = !contentBeforeCursor.includes('\n')
+
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !isFirstLine) {
+    return
+  }
+
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    // 第一次按向上键且有内容时，保存当前内容
+    if (historyIndex === -1 && sendConfig.value.content.trim() && 
+        !sendConfig.value.history.includes(sendConfig.value.content)) {
+      sendConfig.value.history.unshift(sendConfig.value.content)
+      if (sendConfig.value.history.length > sendConfig.value.historyMaxLength) {
+        sendConfig.value.history.pop()
+      }
+    }
+    if (sendConfig.value.history.length > 0) {
+      historyIndex = Math.min(historyIndex + 1, sendConfig.value.history.length - 1)
+      sendConfig.value.content = sendConfig.value.history[historyIndex]
+      target.selectionStart = target.selectionEnd = 0
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    if (historyIndex > -1) {
+      historyIndex--
+      sendConfig.value.content = historyIndex === -1 ? '' : sendConfig.value.history[historyIndex]
+      target.selectionStart = target.selectionEnd = 0
+    }
+  }
+}
+
 </script>
 
 <template>
-  <el-card class="serial-send">
-    <template #header>
-      <div class="card-header">
-        <div class="controls">
-          <el-switch v-model="isHexSend" active-text="HEX" inactive-text="TEXT" class="me-2" />
-          <el-checkbox v-model="addCRLF" label="CRLF" class="me-2" />
-          <el-checkbox v-model="addChecksum" label="校验和" class="me-2" />
-          <el-checkbox v-model="autoSend" @change="toggleAutoSend" label="自动发送" class="me-2" />
-          <el-input-number v-model="autoSendInterval" :min="100" :max="10000" :step="100" @change="handleIntervalChange" size="small" class="me-2" />
-          <span>ms</span>
-          <el-button type="primary" @click="sendData" class="me-2">发送</el-button>
-        </div>
+  <div class="serial-send">
+    <div class="controls">
+      <el-switch v-model="sendConfig.isHexSend" active-text="HEX" inactive-text="TEXT" class="me-2" />
+      <div class="me-2" style="display: inline-block;">
+        <el-checkbox v-model="sendConfig.addCRLF" label="" class="" style="vertical-align: middle;" />
+        <el-select v-model="sendConfig.addCRLFType" size="small" style="width: 80px;">
+          <el-option :value="'\r\n'" label="CRLF(\r\n)" />
+          <el-option :value="'\r'" label="CR(\r)" />
+          <el-option :value="'\n'" label="LF(\n)" />
+        </el-select>
       </div>
-    </template>
+      <el-checkbox v-model="sendConfig.addChecksum" label="校验和" class="me-2" />
+      <el-checkbox v-model="sendConfig.autoSend" @change="toggleAutoSend" label="自动发送" class="me-2" />
+      <el-input-number v-model="sendConfig.autoSendInterval" :min="100" :max="10000" :step="100" @change="handleIntervalChange" size="small" class="me-2" />
+      <span>ms</span>
+      <el-button type="primary" @click="sendData" class="me-2">发送</el-button>
+    </div>
     <div class="send-content">
       <el-input
-        v-model="sendContent"
+        v-model="sendConfig.content"
         type="textarea"
-        :rows="3"
-        :placeholder="isHexSend ? '请输入HEX格式数据，如：49 54 4C 44 47' : '请输入要发送的文本'"
+        :rows="5"
+        :placeholder="sendConfig.isHexSend ? '请输入HEX格式数据，如：49 54 4C 44 47' : '请输入要发送的文本'"
+        @keydown="handleKeyDown"
       />
     </div>
-  </el-card>
+  </div>
 </template>
 
 <style scoped>
 .serial-send {
-  margin-bottom: 10px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 10px;
+  border-top: 1px solid var(--el-border-color-light);
 }
 
 .send-content {

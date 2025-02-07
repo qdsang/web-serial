@@ -1,18 +1,33 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import SerialConfig from './components/SerialConfig.vue'
 import SerialLog from './components/SerialLog.vue'
-import SerialSend from './components/SerialSend.vue'
+import Chart3D from './components/Chart3D.vue'
+import DataTable from './components/DataTable.vue'
 import SerialQuickSend from './components/SerialQuickSend.vue'
 import SerialScripts from './components/SerialScript.vue'
 import { useDark, useToggle } from '@vueuse/core'
+// @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
 const isDark = useDark({
-  // initialValue: 'dark',
-  // storage: localStorage
+  initialValue: 'dark',
+  storage: localStorage
 })
 const toggleDark = useToggle(isDark)
+
+const isFullscreen = ref(false)
+
+const toggleFullscreen = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen()
+    isFullscreen.value = true
+  } else {
+    document.exitFullscreen()
+    isFullscreen.value = false
+  }
+}
 </script>
 
 <template>
@@ -20,7 +35,7 @@ const toggleDark = useToggle(isDark)
     <el-header class="app-header">
       <div class="header-content">
         <div class="header-left">
-          <h1>Web Serial</h1>
+          <h1><a href="https://github.com/qdsang/web-serial" target="_blank">Web Serial</a></h1>
           <SerialConfig class="header-serial-config" />
         </div>
         <div class="header-links">
@@ -30,29 +45,40 @@ const toggleDark = useToggle(isDark)
             circle
             @click="toggleDark()"
           />
+          <el-button
+            class="fullscreen-toggle"
+            :icon="'FullScreen'"
+            circle
+            @click="toggleFullscreen()"
+          />
           <a href="https://github.com/qdsang/web-serial" target="_blank">Github</a>
         </div>
       </div>
     </el-header>
     <el-container class="main-container">
-      <Splitpanes>
-        <Pane>
+      <Splitpanes class="default-theme">
+        <Pane :size="75" class="w75">
           <el-tabs type="card" class="lv-card lv-tabs">
             <el-tab-pane label="日志">
-              <el-main>
-                <SerialLog />
-                <SerialSend />
-              </el-main>
+              <SerialLog />
+            </el-tab-pane>
+            <el-tab-pane label="图表" lazy>
+              <Chart3D />
+            </el-tab-pane>
+            <el-tab-pane label="数据表">
+              <DataTable />
             </el-tab-pane>
           </el-tabs>
         </Pane>
-        <Pane :size="25" :min-size="20" :max-size="50">
+        <Pane :size="25" :min-size="10" :max-size="80" class="w25">
           <el-tabs type="card" class="lv-card lv-tabs">
             <el-tab-pane label="快捷发送">
               <SerialQuickSend />
             </el-tab-pane>
             <el-tab-pane label="脚本">
               <SerialScripts />
+            </el-tab-pane>
+            <el-tab-pane label="设置">
             </el-tab-pane>
           </el-tabs>
         </Pane>
@@ -88,6 +114,7 @@ const toggleDark = useToggle(isDark)
 .header-content h1 {
   color: var(--el-text-color-primary);
   font-size: 1.5rem;
+  font-weight: 600;
   margin: 0;
   background: linear-gradient(120deg, #6366f1 0%, #2dd4bf 100%);
   -webkit-background-clip: text;
@@ -137,15 +164,13 @@ const toggleDark = useToggle(isDark)
 }
 
 .main-container {
+  width: 100%;
   height: calc(100vh - 60px);
   background-color: var(--el-bg-color-overlay);
 }
 
-.el-main {
-  padding: 0px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+.fullscreen-toggle {
+  margin-left: 0px;
 }
 
 .lv-card {
@@ -164,8 +189,22 @@ const toggleDark = useToggle(isDark)
 :deep(.splitpanes__pane) {
   background-color: transparent;
 }
+.w75 {
+  width: 75%;
+}
+.w25 {
+  width: 25%;
+}
 </style>
 <style lang="less">
+html {
+  background-color: var(--el-bg-color-overlay);
+}
+
+html.dark .el-button {
+  --el-button-divide-border-color: rgba(0, 0, 0, 0.5);
+}
+
 .lv-tabs {
 
   .el-tabs__content {
@@ -212,16 +251,16 @@ const toggleDark = useToggle(isDark)
   }
 }
 
+.el-card {
+  --el-card-padding: 12px;
+}
 </style>
 <style>
-.dark .splitpanes.default-theme .splitpanes__pane {
-  background-color: var(--el-border-color) !important;
+.splitpanes.default-theme .splitpanes__pane {
+  background-color: var(--el-bg-color-overlay);
 }
 .dark .default-theme.splitpanes--vertical>.splitpanes__splitter, 
 .dark .default-theme .splitpanes--vertical>.splitpanes__splitter {
   border-color: #333;
-}
-.el-button:active, .el-button:foucs {
-  outline: 0;
 }
 </style>

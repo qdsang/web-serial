@@ -1,137 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { SerialHelper } from '../utils/SerialHelper'
+import { useQuickSendStore } from '../store/quickSendStore'
+import { ref } from 'vue'
 
-interface QuickSendItem {
-  id: number
-  name: string
-  content: string
-  type: 'text' | 'hex'
-}
+const quickSendStore = useQuickSendStore()
+const importInput = ref<HTMLInputElement | null>(null)
 
-interface QuickSendGroup {
-  id: number
-  name: string
-  items: QuickSendItem[]
-}
-
-const currentGroup = ref<QuickSendGroup>({
-  id: 1,
-  name: '默认分组',
-  items: [
-    {
-      id: 1,
-      name: '查询版本',
-      content: 'AT+VERSION?\r\n',
-      type: 'text'
-    },
-    {
-      id: 2,
-      name: '重启设备',
-      content: 'AT+RESET\r\n',
-      type: 'text'
-    },
-    {
-      id: 3,
-      name: '查询状态',
-      content: 'AT+STATUS?\r\n',
-      type: 'text'
-    },
-    {
-      id: 4,
-      name: '16进制测试',
-      content: '48 45 4C 4C 4F',
-      type: 'hex'
-    }
-  ]
-})
-
-const groups = ref<QuickSendGroup[]>([currentGroup.value])
-const autoSendIntervals = ref<Record<number, number>>({})
-const autoSendInterval = ref(1000)
-
-const addItem = () => {
-  currentGroup.value.items.push({
-    id: Date.now(),
-    name: '新建项目',
-    content: '',
-    type: 'text'
-  })
-}
-
-const removeItem = (id: number) => {
-  const index = currentGroup.value.items.findIndex(item => item.id === id)
-  if (index > -1) {
-    currentGroup.value.items.splice(index, 1)
-  }
-}
-
-const addGroup = () => {
-  const name = prompt('请输入分组名称')
-  if (name) {
-    groups.value.push({
-      id: Date.now(),
-      name,
-      items: []
-    })
-  }
-}
-
-const removeGroup = () => {
-  if (groups.value.length <= 1) {
-    ElMessage.warning('至少保留一个分组')
-    return
-  }
-  const index = groups.value.findIndex(group => group.id === currentGroup.value.id)
-  if (index > -1) {
-    groups.value.splice(index, 1)
-    currentGroup.value = groups.value[0]
-  }
-}
-
-const renameGroup = () => {
-  const name = prompt('请输入新的分组名称', currentGroup.value.name)
-  if (name) {
-    currentGroup.value.name = name
-  }
-}
-
-const handleGroupChange = (groupId: number) => {
-  const group = groups.value.find(g => g.id === groupId)
-  if (group) {
-    currentGroup.value = group
-  }
-}
-
-const importConfig = (event: Event) => {
+const handleImportFile = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string)
-        if (!Array.isArray(data) || !data.every(group => 
-          typeof group === 'object' && 
-          typeof group.id === 'number' && 
-          typeof group.name === 'string' && 
-          Array.isArray(group.items)
-        )) {
-          throw new Error('配置文件格式错误')
-        }
-        groups.value = data
-        currentGroup.value = groups.value[0]
-        ElMessage.success('导入成功')
+        quickSendStore.importConfig(data)
       } catch (error) {
-        ElMessage.error(`导入失败：${error instanceof Error ? error.message : '无效的配置文件'}`)
+        // 错误处理已在 store 中实现
       }
     }
     reader.readAsText(input.files[0])
   }
 }
 
-const exportConfig = () => {
-  const data = JSON.stringify(groups.value, null, 2)
+const handleExportConfig = () => {
+  const data = quickSendStore.exportConfig()
   const blob = new Blob([data], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -141,86 +32,41 @@ const exportConfig = () => {
   URL.revokeObjectURL(url)
 }
 
-const serialHelper = SerialHelper.getInstance()
-
-const validateHexData = (data: string): boolean => {
-  const hexPattern = /^[0-9A-Fa-f\s]*$/
-  return hexPattern.test(data)
-}
-
-const sendData = (item: QuickSendItem) => {
-  if (!item.content) {
-    ElMessage.warning('发送内容不能为空')
-    return
-  }
-
-  if (item.type === 'hex' && !validateHexData(item.content)) {
-    ElMessage.error('HEX格式数据不合法')
-    return
-  }
-
-  const data = serialHelper.stringToUint8Array(item.content, item.type === 'hex')
-  window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
-}
-
-const toggleAutoSend = (item: QuickSendItem) => {
-  if (autoSendIntervals[item.id]) {
-    clearInterval(autoSendIntervals[item.id])
-    delete autoSendIntervals[item.id]
-  } else {
-    autoSendIntervals[item.id] = window.setInterval(() => sendData(item), autoSendInterval.value)
+const handleAddGroup = () => {
+  const name = prompt('请输入分组名称')
+  if (name) {
+    quickSendStore.addGroup(name)
   }
 }
 
-const saveToLocalStorage = () => {
-  localStorage.setItem('quickSendGroups', JSON.stringify(groups.value))
-}
-
-const loadFromLocalStorage = () => {
-  const savedGroups = localStorage.getItem('quickSendGroups')
-  if (savedGroups) {
-    try {
-      groups.value = JSON.parse(savedGroups)
-      currentGroup.value = groups.value[0]
-    } catch (error) {
-      ElMessage.error('加载配置失败')
-    }
+const handleRenameGroup = () => {
+  const name = prompt('请输入新的分组名称', quickSendStore.currentGroup.name)
+  if (name) {
+    quickSendStore.renameGroup(name)
   }
 }
-
-watch([groups, currentGroup], () => {
-  saveToLocalStorage()
-}, { deep: true })
-
-onMounted(() => {
-  loadFromLocalStorage()
-})
-
-onUnmounted(() => {
-  Object.values(autoSendIntervals).forEach(clearInterval)
-})
 </script>
 
 <template>
   <div class="quick-send">
     <div class="group-select">
-      <el-select size="small" v-model="currentGroup.id" @change="handleGroupChange">
+      <el-select size="small" v-model="quickSendStore.currentGroupId" @change="quickSendStore.handleGroupChange">
         <el-option
-          v-for="group in groups"
+          v-for="group in quickSendStore.groups"
           :key="group.id"
           :label="group.name"
           :value="group.id"
         />
       </el-select>
       <el-button-group style="width: 240px;">
-        <el-button size="small" @click="addGroup" class="compact-btn">新增</el-button>
-        <el-button size="small" @click="renameGroup" class="compact-btn">改名</el-button>
-        <el-button size="small" @click="removeGroup" class="compact-btn">删除</el-button>
+        <el-button size="small" @click="handleAddGroup" class="compact-btn">新增</el-button>
+        <el-button size="small" @click="handleRenameGroup" class="compact-btn">改名</el-button>
+        <el-button size="small" @click="quickSendStore.removeGroup" class="compact-btn">删除</el-button>
       </el-button-group>
     </div>
     <div class="quick-send-actions">
       <div class="action-group">
-        <el-button size="small" @click="addItem" class="add-item-btn">
+        <el-button size="small" @click="quickSendStore.addItem" class="add-item-btn">
           <el-icon><Plus /></el-icon> 增加一条
         </el-button>
         <input
@@ -228,13 +74,13 @@ onUnmounted(() => {
           ref="importInput"
           style="display: none"
           accept="application/json"
-          @change="importConfig"
+          @change="handleImportFile"
         >
         <el-button-group>
           <el-button size="small" @click="$refs.importInput.click()" class="compact-btn">
             <el-icon><FolderAdd /></el-icon>
           </el-button>
-          <el-button size="small" @click="exportConfig" class="compact-btn">
+          <el-button size="small" @click="handleExportConfig" class="compact-btn">
             <el-icon><FolderOpened /></el-icon>
           </el-button>
         </el-button-group>
@@ -242,9 +88,9 @@ onUnmounted(() => {
     </div>
 
     <div class="quick-send-list">
-      <div v-for="item in currentGroup.items" :key="item.id" class="mb-2 quick-send-item">
+      <div v-for="item in quickSendStore.currentGroup.items" :key="item.id" class="mb-2 quick-send-item">
         <div class="item-row">
-          <el-input v-model="item.name" placeholder="名称" size="small" style="width: 80px" />
+          <el-button size="small" type="primary" @click="quickSendStore.sendData(item)">{{ item.name }}</el-button>
           <el-input
             v-model="item.content"
             size="small"
@@ -252,7 +98,6 @@ onUnmounted(() => {
             class="flex-grow"
           />
           <el-button-group>
-            <el-button size="small" type="primary" @click="sendData(item)">发送</el-button>
             <el-popover
               placement="bottom"
               :width="300"
@@ -265,6 +110,10 @@ onUnmounted(() => {
               </template>
               <div class="item-settings">
                 <div class="setting-row">
+                  <span>指令名称：</span>
+                  <el-input v-model="item.name" placeholder="名称" size="small" style="width: 120px" />
+                </div>
+                <div class="setting-row">
                   <span>数据类型：</span>
                   <el-radio-group v-model="item.type" size="small">
                     <el-radio-button value="text">文本</el-radio-button>
@@ -273,25 +122,31 @@ onUnmounted(() => {
                 </div>
                 <div class="setting-row">
                   <span>定时发送：</span>
-                  <el-input-number
-                    v-model="autoSendInterval"
-                    :min="100"
-                    :max="10000"
-                    size="small"
-                    style="width: 120px"
-                    class="me-2"
+                  <el-tooltip
+                    class="box-item"
+                    effect="dark"
+                    content="间隔(ms)"
+                    placement="bottom"
                   >
-                    <template #prefix>间隔(ms)</template>
-                  </el-input-number>
+                    <el-input-number
+                      v-model="quickSendStore.autoSendInterval"
+                      :min="100"
+                      :max="10000"
+                      size="small"
+                      style="width: 120px"
+                      class="me-2"
+                    >
+                    </el-input-number>
+                  </el-tooltip>
                   <el-button
                     size="small"
-                    :type="autoSendIntervals[item.id] ? 'success' : 'default'"
-                    @click="toggleAutoSend(item)"
-                  >{{ autoSendIntervals[item.id] ? '停止' : '开始' }}</el-button>
+                    :type="quickSendStore.autoSendIntervals[item.id] ? 'success' : 'default'"
+                    @click="quickSendStore.toggleAutoSend(item)"
+                  >{{ quickSendStore.autoSendIntervals[item.id] ? '停止' : '开始' }}</el-button>
                 </div>
               </div>
             </el-popover>
-            <el-button size="small" type="danger" @click="removeItem(item.id)">
+            <el-button size="small" type="danger" @click="quickSendStore.removeItem(item.id)">
               <el-icon><Delete /></el-icon>
             </el-button>
           </el-button-group>
@@ -399,11 +254,5 @@ onUnmounted(() => {
 
 .me-2 {
   margin-right: 4px;
-}
-</style>
-<style>
-
-.el-card {
-  --el-card-padding: 12px;
 }
 </style>

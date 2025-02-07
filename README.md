@@ -1,4 +1,4 @@
-# Web Serial
+# Web Serial Debugger
 
 一个基于 Web Serial API 的串口调试工具，使用 Vue 3 + TypeScript + Vite 构建。
 

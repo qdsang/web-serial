@@ -18,6 +18,18 @@ interface DisplayConfig {
   timeOut: number
 }
 
+interface SendConfig {
+  isHexSend: boolean
+  addCRLF: boolean
+  addCRLFType: string
+  autoSend: boolean
+  autoSendInterval: number
+  addChecksum: boolean
+  content: string
+  history: string[]
+  historyMaxLength: number
+}
+
 type ConfigKey = keyof typeof defaultConfigs
 
 const defaultConfigs = {
@@ -37,7 +49,19 @@ const defaultConfigs = {
     showNewline: true,
     autoScroll: false,
     timeOut: 50
-  } as DisplayConfig
+  } as DisplayConfig,
+
+  send: {
+    isHexSend: false,
+    addCRLF: false,
+    addCRLFType: "\n",
+    autoSend: false,
+    autoSendInterval: 1000,
+    addChecksum: false,
+    content: "",
+    history: [],
+    historyMaxLength: 100
+  } as SendConfig
 }
 
 export class ConfigManager {

@@ -2,9 +2,13 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ConfigManager } from '../utils/ConfigManager'
+import { ScriptManager } from '../utils/ScriptManager'
 
 const configManager = ConfigManager.getInstance()
 const serialConfig = configManager.useConfig('serial')
+
+const scriptManager = ScriptManager.getInstance()
+
 
 const serialPort = ref<SerialPort | null>(null)
 const serialWriter = ref<WritableStreamDefaultWriter | null>(null)
@@ -13,7 +17,7 @@ const isConnected = ref(false)
 const authorizedPorts = ref<SerialPort[]>([])
 const authorizedWebUSBDevices = ref<USBDevice[]>([])
 const authorizedBluetoothDevices = ref<BluetoothDevice[]>([])
-const selectedDeviceType = ref('')
+const selectedDevice = ref('')
 const baudRates = [
   1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600
 ]
@@ -32,12 +36,21 @@ const handleConfigChange = async () => {
 
 watch(serialConfig, handleConfigChange, { deep: true })
 
+const DataEmit = async (data: Uint8Array) => {
+  const runtimer = await scriptManager.getRuntimer()
+  if (runtimer.DataReceiverInterface) {
+    data = await runtimer.DataReceiverInterface(data);
+  }
+  window.dispatchEvent(new CustomEvent('serial-data', { detail: data }))
+}
+
 const connectSerial = async () => {
   try {
     const port = await navigator.serial.requestPort()
     await connectToPort(port)
   } catch (error) {
     ElMessage.error('串口连接失败：' + error)
+    selectedDevice.value = ''
   }
 }
 
@@ -52,6 +65,7 @@ const connectWebUSB = async () => {
     ElMessage.success('WebUSB设备已授权')
   } catch (error) {
     ElMessage.error('WebUSB设备授权失败：' + error)
+    selectedDevice.value = ''
   }
 }
 
@@ -66,12 +80,13 @@ const connectBluetooth = async () => {
     ElMessage.success('蓝牙设备已授权')
   } catch (error) {
     ElMessage.error('蓝牙设备授权失败：' + error)
+    selectedDevice.value = ''
   }
 }
 
 const handleDeviceAuthorize = () => {
   stopSimulation()
-  switch (selectedDeviceType.value) {
+  switch (selectedDevice.value) {
     case 'authorizedSerial':
       connectSerial()
       break
@@ -83,23 +98,26 @@ const handleDeviceAuthorize = () => {
       break
     case 'websocket':
       break
+    case 'webstlink':
     case 'script':
+      ElMessage.warning('该设备类型开发中')
+      selectedDevice.value = ''
       break
     case 'mock':
       startSimulation()
       break
     default:
-      const selectedPort = authorizedPorts.value.find(p => p.getInfo().usbProductId?.toString() === selectedDeviceType.value)
+      const selectedPort = authorizedPorts.value.find(p => p.getInfo().usbProductId?.toString() === selectedDevice.value)
       if (selectedPort) {
         connectToPort(selectedPort)
         return
       }
-      const selectedUSBDevice = authorizedWebUSBDevices.value.find(d => d.serialNumber === selectedDeviceType.value)
+      const selectedUSBDevice = authorizedWebUSBDevices.value.find(d => d.serialNumber === selectedDevice.value)
       if (selectedUSBDevice) {
         // 处理USB设备连接
         return
       }
-      const selectedBluetoothDevice = authorizedBluetoothDevices.value.find(d => d.id === selectedDeviceType.value)
+      const selectedBluetoothDevice = authorizedBluetoothDevices.value.find(d => d.id === selectedDevice.value)
       if (selectedBluetoothDevice) {
         // 处理蓝牙设备连接
         return
@@ -126,6 +144,7 @@ const connectToPort = async (port: SerialPort) => {
 }
 
 const disconnectSerial = async () => {
+  stopSimulation()
   try {
     if (serialReader.value) {
       await serialReader.value.cancel()
@@ -152,7 +171,7 @@ const startReading = async () => {
       if (done) {
         break
       }
-      window.dispatchEvent(new CustomEvent('serial-data', { detail: value }))
+      DataEmit(value)
     } catch (error) {
       ElMessage.error('读取串口数据失败：' + error)
       break
@@ -165,26 +184,34 @@ const handleSerialSend = async (event: CustomEvent) => {
     ElMessage.error('串口未连接')
     return
   }
+  let data = event.detail;
+
+  const runtimer = await scriptManager.getRuntimer()
+  if (runtimer.DataSenderInterface) {
+    data = await runtimer.DataSenderInterface(data);
+  }
 
   try {
-    await serialWriter.value.write(event.detail)
+    await serialWriter.value.write(data)
   } catch (error) {
     ElMessage.error('发送数据失败：' + error)
   }
 }
 
 onMounted(() => {
-  window.addEventListener('serial-send', handleSerialSend as EventListener)
-  navigator.serial.getPorts().then(ports => {
+  // @ts-ignore
+  window.addEventListener('serial-send', ((event: CustomEvent) => handleSerialSend(event)) as EventListener)
+  navigator.serial?.getPorts().then(ports => {
     authorizedPorts.value = ports
   })
-  navigator.usb.getDevices().then(devices => {
+  navigator.usb?.getDevices().then(devices => {
     authorizedWebUSBDevices.value = devices
   })
 })
 
 onUnmounted(() => {
-  window.removeEventListener('serial-send', handleSerialSend as EventListener)
+  // @ts-ignore
+  window.removeEventListener('serial-send', ((event: CustomEvent) => handleSerialSend(event)) as EventListener)
 })
 
 const isSimulating = ref(false)
@@ -192,20 +219,36 @@ let simulationTimer: number | null = null
 
 const startSimulation = () => {
   isSimulating.value = true
+  isConnected.value = true
+  let dataBuffer: Uint8Array[] = []
+
+  const { writable, readable } = new TransformStream({
+    transform(chunk, controller) {
+      dataBuffer.push(chunk)
+      controller.enqueue(chunk)
+    }
+  })
+
   simulationTimer = window.setInterval(() => {
-    const randomLength = Math.floor(Math.random() * 10) + 1
+    const randomLength = Math.floor(Math.random() * 100) + 1
     const randomData = new Uint8Array(randomLength)
     for (let i = 0; i < randomLength; i++) {
       randomData[i] = Math.floor(Math.random() * 256)
     }
-    window.dispatchEvent(new CustomEvent('serial-data', { detail: randomData }))
-  }, 300)
+    DataEmit(randomData)
+  }, 2000)
+
+  serialWriter.value = writable.getWriter()
+  serialReader.value = readable.getReader()
+  startReading()
 }
 
 const stopSimulation = () => {
   if (simulationTimer) {
     clearInterval(simulationTimer)
     simulationTimer = null
+    isConnected.value = false
+    
   }
 }
 
@@ -246,11 +289,11 @@ const KNOWN_DEVICES = [
   { name: 'STM32 USB CDC', vendorId: '0483', productId: '5740' }
 ]
 
-const getDeviceTitle = (port) => {
+const getDeviceTitle = (port: SerialPort) => {
   if (!port.getInfo().usbProductId) return '串口设备'
   
-  const vendorId = port.getInfo().usbVendorId.toString(16).padStart(4, '0')
-  const productId = port.getInfo().usbProductId.toString(16).padStart(4, '0')
+  const vendorId = (port.getInfo().usbVendorId || 0).toString(16).padStart(4, '0')
+  const productId = (port.getInfo().usbProductId || 0).toString(16).padStart(4, '0')
   
   const device = KNOWN_DEVICES.find(
     d => d.vendorId.toLowerCase() === vendorId.toLowerCase() && 
@@ -262,12 +305,19 @@ const getDeviceTitle = (port) => {
     `未知设备 (VID:${vendorId} PID:${productId})`
 }
 
-const getWebUSBDeviceTitle = (device: USBDevice) => {
-  return `${device.productName || '未知设备'} (${device.vendorId}:${device.productId})`
+const getWebUSBDeviceTitle = (device: any) => {
+  return '未知设备' + device
+  // return `${device.productName || '未知设备'} (${device.vendorId}:${device.productId})`
 }
 
-const getBluetoothDeviceTitle = (device: BluetoothDevice) => {
-  return `${device.name || '未知设备'} (${device.id})`
+const getBluetoothDeviceTitle = (device: any) => {
+  return '未知设备' + device
+  // return `${device.name || '未知设备'} (${device.id})`
+}
+
+const handleConenctClick = () => {
+  // @ts-ignore
+  isConnected ? disconnectSerial() : connectToPort(serialPort.value)
 }
 
 </script>
@@ -277,7 +327,8 @@ const getBluetoothDeviceTitle = (device: BluetoothDevice) => {
     <div class="config-container">
       <div class="port-section">
         <div class="port-list">
-          <el-select v-model="selectedDeviceType" @change="handleDeviceAuthorize" placeholder="选择设备" size="small">
+          <el-select v-model="selectedDevice" @change="handleDeviceAuthorize" placeholder="选择设备" size="small">
+            <el-option label="选择设备" value=""></el-option>
             <el-option-group label="串口设备">
               <el-option label="授权串口设备" value="authorizedSerial"></el-option>
               <el-option
@@ -314,12 +365,12 @@ const getBluetoothDeviceTitle = (device: BluetoothDevice) => {
           </el-select>
         </div>
         <el-button-group>
-          <el-button :type="isConnected ? 'danger' : 'primary'" @click="isConnected ? disconnectSerial() : connectToPort(serialPort.value)" size="small">
+          <el-button :type="isConnected ? 'danger' : 'primary'" @click="handleConenctClick" size="small">
             {{ isConnected ? '断开' : '连接' }}
           </el-button>
         </el-button-group>
       </div>
-      <el-form :model="serialConfig" :inline="true" size="small" class="config-section">
+      <el-form v-if="selectedDevice != 'websocket'" :model="serialConfig" :inline="true" size="small" class="config-section">
         <el-form-item label="波特率">
           <el-select v-model="serialConfig.baudRate" style="width: 80px;">
             <el-option v-for="rate in baudRates" :key="rate" :value="rate" />
@@ -327,7 +378,7 @@ const getBluetoothDeviceTitle = (device: BluetoothDevice) => {
         </el-form-item>
         <el-form-item label="数据位">
           <el-select v-model="serialConfig.dataBits" style="width: 50px;">
-            <el-option v-for="bits in [7, 8]" :key="bits" :value="bits" />
+            <el-option v-for="bits in [8, 7, 6, 5]" :key="bits" :value="bits" />
           </el-select>
         </el-form-item>
         <el-form-item label="停止位">
@@ -346,6 +397,12 @@ const getBluetoothDeviceTitle = (device: BluetoothDevice) => {
           <el-select v-model="serialConfig.flowControl" style="width: 60px;">
             <el-option label="无" value="none" />
             <el-option label="硬件流控" value="hardware" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <el-form v-else :model="serialConfig" :inline="true" size="small" class="config-section">
+        <el-form-item label="ws">
+          <el-select v-model="serialConfig" style="width: 300px;">
           </el-select>
         </el-form-item>
       </el-form>

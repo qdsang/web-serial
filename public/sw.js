@@ -1,18 +1,8 @@
+
 const CACHE_NAME = 'web-serial-debug-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/src/main.ts',
-  '/src/App.vue',
-  '/src/style.css',
-  '/src/components/SerialLog.vue',
-  '/src/components/SerialConfig.vue',
-  '/src/components/SerialSend.vue',
-  '/src/components/SerialQuickSend.vue',
-  '/src/components/SerialScript.vue',
-  '/src/components/SerialSettings.vue',
-  '/src/utils/ConfigManager.ts',
-  '/src/utils/SerialHelper.ts'
+  './',
+  './index.html'
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,14 +23,17 @@ self.addEventListener('fetch', (event) => {
         }
         return fetch(event.request).then(
           (response) => {
-            if(!response || response.status !== 200 || response.type !== 'basic') {
+            if(!response || response.status !== 200) {
               return response;
             }
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
+            // 只缓存静态资源
+            if (event.request.url.includes('/assets/')) {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache);
+                });
+            }
             return response;
           }
         );
