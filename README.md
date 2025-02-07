@@ -2,6 +2,7 @@
 
 一个基于 Web Serial API 的串口调试工具，使用 Vue 3 + TypeScript + Vite 构建。
 
+
 ## 功能特点
 
 - 🔌 支持串口和WebUSB设备连接
