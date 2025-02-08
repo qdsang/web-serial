@@ -146,12 +146,12 @@ export const useQuickSendStore = defineStore('quickSend', () => {
 
   // 保存到本地存储
   const saveToLocalStorage = () => {
-    localStorage.setItem('quickSendGroups', JSON.stringify(groups.value))
+    localStorage.setItem('config.quickSendGroups', JSON.stringify(groups.value))
   }
 
   // 从本地存储加载
   const loadFromLocalStorage = () => {
-    const savedGroups = localStorage.getItem('quickSendGroups')
+    const savedGroups = localStorage.getItem('config.quickSendGroups')
     if (savedGroups) {
       try {
         groups.value = JSON.parse(savedGroups)

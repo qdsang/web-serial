@@ -263,8 +263,13 @@ const handleWsConfigChange = (value: string) => {
   wsConfig.value.url = value
   if (!wsConfig.value.history.includes(value)) {
     wsConfig.value.history.push(value)
-    localStorage.setItem('wsConfig', JSON.stringify(wsConfig.value))
+    localStorage.setItem('config.wsConfig', JSON.stringify(wsConfig.value))
   }
+  connectToWebsocket()
+}
+
+const connectToWebsocket = async () => {
+  
 }
 
 onMounted(() => {
@@ -435,7 +440,7 @@ const handleConenctClick = () => {
               <el-option label="WebSocket" value="websocket"></el-option>
               <el-option label="脚本" value="script"></el-option>
               <el-option label="Stlink" value="webstlink"></el-option>
-              <el-option label="Mock" value="mock"></el-option>
+              <el-option label="IMU模拟数据" value="mock"></el-option>
             </el-option-group>
           </el-select>
         </div>

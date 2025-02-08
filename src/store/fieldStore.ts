@@ -5,8 +5,12 @@ interface DataField {
   key: string
   name: string
   description: string
+  keyAddr: number
+  keySize: number
   value: any
   dataType: 'number' | 'string' | 'boolean' | 'object'
+  avg: number | null
+  avgSum: number | null
   min: number | null
   max: number | null
   lastUpdate: number
@@ -17,9 +21,12 @@ interface DataField {
 interface ColumnVisibility {
   key: boolean
   name: boolean
-  description: boolean
-  value: boolean
   dataType: boolean
+  description: boolean
+  keyAddr: boolean
+  keySize: boolean
+  value: boolean
+  avg: boolean
   min: boolean
   max: boolean
   lastUpdate: boolean
@@ -33,9 +40,12 @@ export const useFieldStore = defineStore('field', {
     columnVisibility: {
       key: true,
       name: false,
+      keyAddr: false,
+      keySize: false,
       dataType: true,
       description: false,
       value: true,
+      avg: false,
       min: false,
       max: false,
       lastUpdate: true,
@@ -48,9 +58,13 @@ export const useFieldStore = defineStore('field', {
         id: this.nextId++,
         key,
         name: key,
+        keyAddr: 0,
+        keySize: 0,
+        dataType: dataType || 'number',
         description: '',
         value,
-        dataType: dataType || 'number',
+        avg: typeof value === 'number' ? value : null,
+        avgSum: typeof value === 'number' ? value : null,
         min: typeof value === 'number' ? value : null,
         max: typeof value === 'number' ? value : null,
         lastUpdate: Date.now(),
@@ -74,6 +88,12 @@ export const useFieldStore = defineStore('field', {
       field.updateCount++
 
       if (typeof value === 'number') {
+        if (field.avgSum == null) {
+          field.avgSum = 0
+        }
+        field.avgSum += value
+        field.avg = Math.floor(field.avgSum / field.updateCount * 1000) / 1000
+        
         if (field.min === null || value < field.min) field.min = value
         if (field.max === null || value > field.max) field.max = value
       }
@@ -87,16 +107,16 @@ export const useFieldStore = defineStore('field', {
       }
     },
     toggleColumnVisibility() {
-      localStorage.setItem('columnVisibility', JSON.stringify(this.columnVisibility))
+      localStorage.setItem('config.columnVisibility', JSON.stringify(this.columnVisibility))
     },
     saveToLocalStorage() {
-      localStorage.setItem('fields', JSON.stringify(this.fields))
-      localStorage.setItem('nextId', String(this.nextId))
+      localStorage.setItem('config.fields', JSON.stringify(this.fields))
+      localStorage.setItem('config.nextId', String(this.nextId))
     },
     loadFromLocalStorage() {
-      const fieldsStr = localStorage.getItem('fields')
-      const nextIdStr = localStorage.getItem('nextId')
-      const columnVisibilityStr = localStorage.getItem('columnVisibility')
+      const fieldsStr = localStorage.getItem('config.fields')
+      const nextIdStr = localStorage.getItem('config.nextId')
+      const columnVisibilityStr = localStorage.getItem('config.columnVisibility')
 
       if (fieldsStr) {
         this.fields = JSON.parse(fieldsStr)

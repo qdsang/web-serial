@@ -119,11 +119,9 @@ watch(scripts, () => {
         <el-button size="small" @click="addScript">
           <el-icon><Plus /></el-icon> 新建
         </el-button>
-        <!-- <el-button size="small" @click="renameScript">改名</el-button> -->
         <el-button size="small" type="danger" @click="removeScript(currentScript.id)">删除</el-button>
       </el-button-group>
     </div>
-
 
     <div class="script-editor">
       <div class="script-name-container">

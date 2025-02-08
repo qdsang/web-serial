@@ -30,6 +30,8 @@ async function DataReceiver(data) {
           data[s2[0]] = parseFloat(s2[1])
         }
       })
+      
+      // 更新到数据表
       updateDataTable(data);
     }
   }
@@ -58,7 +60,7 @@ setInterval(async () => {
 export class ScriptManager {
   private static instance: ScriptManager
   private scripts: ScriptItem[] = []
-  private currentScript: ScriptItem = {
+  public currentScript: ScriptItem = {
     id: Date.now(),
     name: '新建脚本',
     code: '',
@@ -204,11 +206,11 @@ return (async function() {
   }
 
   public saveScripts(): void {
-    localStorage.setItem('serialScripts', JSON.stringify(this.scripts))
+    localStorage.setItem('config.serialScripts', JSON.stringify(this.scripts))
   }
 
   private loadScripts(): void {
-    const savedScripts = localStorage.getItem('serialScripts')
+    const savedScripts = localStorage.getItem('config.serialScripts')
     if (savedScripts) {
       try {
         this.scripts = JSON.parse(savedScripts)
@@ -219,6 +221,10 @@ return (async function() {
     if (this.scripts.length === 0) {
       this.addScript()
     }
+    this.scripts.map((script) => {
+      script.isRunning = false
+    })
+
     this.currentScript = this.scripts[0] || this.currentScript
   }
 }

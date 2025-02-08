@@ -30,6 +30,8 @@ const updateField = () => {
 const resetData = () => {
   fieldStore.fields.forEach(field => {
     field.value = ''
+    field.avg = null
+    field.avgSum = null
     field.min = null
     field.max = null
     field.updateCount = 0
@@ -63,8 +65,11 @@ onUnmounted(() => {
                 {{ key === 'key' ? 'Key' :
                    key === 'name' ? '字段名' :
                    key === 'dataType' ? '类型' :
+                   key === 'keyAddr' ? '内存地址' :
+                   key === 'keySize' ? '内存大小' :
                    key === 'description' ? '描述' :
                    key === 'value' ? '当前值' :
+                   key === 'avg' ? '平均值' :
                    key === 'min' ? '最小值' :
                    key === 'max' ? '最大值' :
                    key === 'lastUpdate' ? '最后更新' :
@@ -115,6 +120,18 @@ onUnmounted(() => {
         </template>
       </el-table-column>
 
+      <el-table-column v-if="fieldStore.columnVisibility.keyAddr" label="内存地址" min-width="100">
+        <template #default="{ row }">
+          <el-input v-model="row.keyAddr" size="small" @change="updateField" />
+        </template>
+      </el-table-column>
+
+      <el-table-column v-if="fieldStore.columnVisibility.keySize" label="内存大小" min-width="100">
+        <template #default="{ row }">
+          <el-input v-model="row.keySize" size="small" @change="updateField" />
+        </template>
+      </el-table-column>
+
       <el-table-column v-if="fieldStore.columnVisibility.dataType" label="数据类型" min-width="80">
         <template #default="{ row }">
           <el-select v-model="row.dataType" size="small" @change="updateField">
@@ -135,6 +152,12 @@ onUnmounted(() => {
       <el-table-column v-if="fieldStore.columnVisibility.value" label="当前值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.value }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column v-if="fieldStore.columnVisibility.avg" label="平均值" min-width="100">
+        <template #default="{ row }">
+          <span>{{ row.avg ?? '-' }}</span>
         </template>
       </el-table-column>
 

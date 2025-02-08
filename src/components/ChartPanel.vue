@@ -99,6 +99,11 @@ const initUplot = (chart: ChartConfig, container: HTMLElement) => {
     width: container.clientWidth || 200,
     height: 300,
     // title: chart.name,
+    cursor: {
+      sync: {
+        key: 0,
+      }
+    },
     series: [
       {
         label: 'Time',
@@ -169,6 +174,21 @@ const handleTitleChange = () => {
   saveChartsConfig()
 }
 
+const handleFieldsChange = (chart: ChartConfig) => {
+  // 重新初始化数据数组
+  chart.data = [chart.timestamps]
+  chart.fields.forEach(() => chart.data.push([]))
+
+  saveChartsConfig()
+
+  if (chart.uplot) {
+    chart.uplot.destroy()
+    if (chart.container) {
+      initUplot(chart, chart.container)
+    }
+  }
+}
+
 const addField = (chartId: number, field: string) => {
   const chart = charts.value.find(c => c.id === chartId)
   if (!chart) return
@@ -180,25 +200,6 @@ const addField = (chartId: number, field: string) => {
 
   chart.fields.push(field)
   chart.data.push([])
-  saveChartsConfig()
-
-  if (chart.uplot) {
-    chart.uplot.destroy()
-    if (chart.container) {
-      initUplot(chart, chart.container)
-    }
-  }
-}
-
-const removeField = (chartId: number, field: string) => {
-  const chart = charts.value.find(c => c.id === chartId)
-  if (!chart) return
-
-  const index = chart.fields.indexOf(field)
-  if (index === -1) return
-
-  chart.fields.splice(index, 1)
-  chart.data.splice(index + 1, 1)
   saveChartsConfig()
 
   if (chart.uplot) {
@@ -268,28 +269,22 @@ onUnmounted(() => {
             class="chart-name-input"
             @change="handleTitleChange"
           />
-          <el-popover
-            placement="bottom"
-            :width="200"
-            trigger="click"
+          <el-select
+            v-model="chart.fields"
+            multiple
+            filterable
+            placeholder="选择字段"
+            size="small"
+            style="min-width: 200px"
+            @change="handleFieldsChange(chart)"
           >
-            <template #reference>
-              <el-button type="primary" size="small">
-                添加字段
-              </el-button>
-            </template>
-            <div class="field-selector">
-              <el-button
-                v-for="field in fieldStore.fields.map(f => f.key)" 
-                :key="field"
-                @click="addField(chart.id, field)"
-                size="small"
-                text
-              >
-                {{ field }}
-              </el-button>
-            </div>
-          </el-popover>
+            <el-option
+              v-for="field in fieldStore.fields.map(f => f.key)"
+              :key="field"
+              :label="field"
+              :value="field"
+            />
+          </el-select>
           <el-button
             @click="removeChart(chart.id)"
             type="danger"
@@ -300,6 +295,7 @@ onUnmounted(() => {
           </el-button>
           <el-button
             @click="resetChartData(chart.id)"
+            style="margin-left: 0"
             type="warning"
             size="small"
             circle
@@ -308,17 +304,6 @@ onUnmounted(() => {
           </el-button>
         </div>
         <div class="chart-content">
-          <div class="fields-list">
-            <el-tag
-              v-for="field in chart.fields"
-              :key="field"
-              closable
-              @close="removeField(chart.id, field)"
-              class="field-tag"
-            >
-              {{ field }}
-            </el-tag>
-          </div>
           <div
             :ref="(el: any) => { if (el && !chart.uplot) initUplot(chart, el) }"
             class="chart-container"
@@ -369,16 +354,6 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 10px;
   padding-bottom: 20px;
-}
-
-.fields-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.field-tag {
-  margin-right: 8px;
 }
 
 .chart-container {
