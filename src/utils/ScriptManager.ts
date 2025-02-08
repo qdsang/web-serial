@@ -12,6 +12,49 @@ export interface Runtimer {
   DataSenderInterface: Function | null
 }
 
+const demo1 = `
+// 处理接收的数据  数据格式："pitch:-0.13,roll:0.00,yaw:0.07\\n"
+let cache = '';
+async function DataReceiver(data) {
+  cache += uint8ArrayToString(data);
+
+  if (cache.indexOf('\\n') !== -1) {
+    const lines = cache.split('\\n');
+    cache = lines.pop() || '';
+    for (const line of lines) {
+      let files = line.split(',')
+      let data = {};
+      files.map((str) => {
+        let s2 = str.split(':')
+        if (s2.length === 2) {
+          data[s2[0]] = parseFloat(s2[1])
+        }
+      })
+      updateDataTable(data);
+    }
+  }
+  return data;
+}
+
+// 处理发送的数据
+async function DataSender(data) {
+  await sleep(100);
+  return data;
+}
+
+// 定时发送数据
+setInterval(async () => {
+  const bytes = new Uint8Array(3);
+  // sendHex(bytes);
+}, 1000);
+
+// stringToUint8Array();
+// uint8ArrayToHexString();
+// uint8ArrayToString();
+
+`;
+
+
 export class ScriptManager {
   private static instance: ScriptManager
   private scripts: ScriptItem[] = []
@@ -57,33 +100,7 @@ export class ScriptManager {
     const newScript: ScriptItem = {
       id: Date.now(),
       name: '新建脚本',
-      code: `
-// 处理接收的数据
-async function DataReceiver(data) {
-  return data;
-}
-
-// 处理发送的数据
-async function DataSender(data) {
-  await sleep(100);
-  return data;
-}
-
-// 定时发送数据
-setInterval(async () => {
-    // sendHex([0x11, 0x11, 0x11]);
-}, 1000);
-
-// 更新IMU数据
-let pitch = 0.0, roll = 0.0, yaw = 0.0;
-setInterval(() => {
-  pitch += Math.random()*0.4 - 0.2;
-  roll += Math.random()*0.4 - 0.1;
-  yaw += Math.random()*0.4 - 0;
-  updateIMU({pitch, roll, yaw});
-}, 10);
-
-`,
+      code: demo1,
       isRunning: false
     }
     this.scripts.push(newScript)
@@ -116,6 +133,9 @@ setInterval(() => {
 
     try {
       const scriptContext = {
+        stringToUint8Array: this.serialHelper.stringToUint8Array.bind(this.serialHelper),
+        uint8ArrayToHexString: this.serialHelper.uint8ArrayToHexString.bind(this.serialHelper),
+        uint8ArrayToString: this.serialHelper.uint8ArrayToString.bind(this.serialHelper),
         sendText: (text: string) => {
           const data = this.serialHelper.stringToUint8Array(text)
           window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
@@ -127,8 +147,8 @@ setInterval(() => {
           }
           window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
         },
-        updateIMU: (data: any) => {
-          window.dispatchEvent(new CustomEvent('data-imu', { detail: data }))
+        updateDataTable: (data: any) => {
+          window.dispatchEvent(new CustomEvent('data-update', { detail: data }))
         },
         sleep: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
         setTimeout: (fn: Function, ms: number) => {

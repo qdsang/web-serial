@@ -152,7 +152,7 @@ watch(scripts, () => {
               <li>sendText(text) - 发送文本数据</li>
               <li>sendHex(hex) - 发送HEX格式数据</li>
               <li>sleep(ms) - 延时指定毫秒数</li>
-              <li>updateIMU({pitch: 1.0, roll: 1.0, yaw: 1.0}); 更新IMU数据</li>
+              <li>updateDataTable({pitch: 1.0, roll: 1.0, yaw: 1.0}); 更新IMU数据</li>
             </ul>
           </template>
           <el-button size="small" style="margin-left: 0;">

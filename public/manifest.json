@@ -1,0 +1,16 @@
+{
+  "name": "Web Serial Debugger",
+  "short_name": "Serial Debug",
+  "description": "Web Serial 串口调试工具",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#409eff",
+  "icons": [
+    {
+      "src": "vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

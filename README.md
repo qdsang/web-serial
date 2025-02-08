@@ -1,6 +1,10 @@
-# Web Serial Debugger
+# [Web Serial Debugger](https://qdsang.github.io/web-serial-debug/)
 
-一个基于 Web Serial API 的串口调试工具，使用 Vue 3 + TypeScript + Vite 构建。
+一个基于 Web Serial 的串口调试工具。 [https://qdsang.github.io/web-serial-debug/](https://qdsang.github.io/web-serial-debug/)
+
+## Demo
+
+![Image](./docs/preview.png "LV GUI Builder Preview")
 
 
 ## 功能特点
@@ -68,13 +72,7 @@ yarn build
 yarn preview
 ```
 
-## 浏览器支持
-
-- Chrome >= 89
-- Edge >= 89
-- Opera >= 76
-
-> 注意：需要浏览器支持 Web Serial API
+https://github.com/devanlai/webstlink
 
 ## 许可证
 

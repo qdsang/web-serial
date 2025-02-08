@@ -10,9 +10,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor': ['vue', 'vue-router'],
+          'vendor': [],
+          'vue': ['vue', 'vue-router', '@vueuse/core', 'pinia'],
+          'three': ['three', 'stats.js'],
+          'uplot': ['uplot'],
           'xterm': ['xterm', 'xterm-addon-fit', 'xterm-addon-web-links', '@xterm/addon-search'],
-          'utils': ['@vueuse/core', 'splitpanes', 'element-plus']
+          'utils': ['splitpanes', 'element-plus']
         }
       }
     }

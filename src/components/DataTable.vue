@@ -1,162 +1,164 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import dayjs from 'dayjs'
+import { onMounted, onUnmounted } from 'vue'
+import { useFieldStore } from '../store/fieldStore'
 
-interface DataField {
-  id: number
-  key: string
-  name: string
-  description: string
-  value: any
-  min: number | null
-  max: number | null
-  lastUpdate: string
-  updateCount: number
-  isEditing: boolean
-}
+const fieldStore = useFieldStore()
 
-const fields = ref<DataField[]>([])
-let nextId = 1
-
-const createField = (key: string, value: any): DataField => ({
-  id: nextId++,
-  key,
-  name: key,
-  description: '',
-  value,
-  min: typeof value === 'number' ? value : null,
-  max: typeof value === 'number' ? value : null,
-  lastUpdate: dayjs().format('YYYY-MM-DD HH:mm:ss.SSS'),
-  updateCount: 1,
-  isEditing: false
-})
-
-const updateField = (field: DataField, value: any) => {
-  field.value = value
-  field.lastUpdate = dayjs().format('YYYY-MM-DD HH:mm:ss.SSS')
-  field.updateCount++
-
-  if (typeof value === 'number') {
-    if (field.min === null || value < field.min) field.min = value
-    if (field.max === null || value > field.max) field.max = value
-  }
-}
 
 const handleDataKey = (event: CustomEvent) => {
   const data = event.detail
   if (typeof data !== 'object' || data === null) return
 
   Object.entries(data).forEach(([key, value]) => {
-    const existingField = fields.value.find(f => f.key === key)
+    const existingField = fieldStore.fields.find(f => f.key === key)
     if (existingField) {
-      updateField(existingField, value)
+      fieldStore.updateField(existingField, value)
     } else {
-      fields.value.push(createField(key, value))
+      fieldStore.fields.push(fieldStore.createField(key, value))
     }
   })
 }
 
-const startEditing = (field: DataField) => {
-  field.isEditing = true
+const addNewField = () => {
+  fieldStore.createField('new_field', '')
 }
 
-const saveField = (field: DataField) => {
-  if (!field.key.trim()) {
-    ElMessage.error('字段名不能为空')
-    return
-  }
-  
-  const duplicate = fields.value.find(f => f.id !== field.id && f.key === field.key)
-  if (duplicate) {
-    ElMessage.error('字段名已存在')
-    return
-  }
-
-  field.isEditing = false
+const updateField = () => {
+  fieldStore.saveToLocalStorage()
 }
 
-const deleteField = (fieldId: number) => {
-  const index = fields.value.findIndex(f => f.id === fieldId)
-  if (index !== -1) {
-    fields.value.splice(index, 1)
-  }
+const resetData = () => {
+  fieldStore.fields.forEach(field => {
+    field.value = ''
+    field.min = null
+    field.max = null
+    field.updateCount = 0
+    field.lastUpdate = 0
+  })
+  fieldStore.saveToLocalStorage()
 }
 
 onMounted(() => {
-  window.addEventListener('data-key', handleDataKey as EventListener)
+  fieldStore.loadFromLocalStorage()
+  window.addEventListener('data-update', handleDataKey as EventListener)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('data-key', handleDataKey as EventListener)
+  window.removeEventListener('data-update', handleDataKey as EventListener)
 })
 </script>
 
 <template>
   <div class="data-table-container">
-    <el-table :data="fields" border stripe>
-      <el-table-column label="操作" width="100">
+    <div class="table-toolbar">
+      <el-dropdown trigger="click">
+        <el-button type="primary" size="small">
+          显示/隐藏列
+          <el-icon class="el-icon--right"><arrow-down /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item v-for="(_, key) in fieldStore.columnVisibility" :key="key">
+              <el-checkbox v-model="fieldStore.columnVisibility[key]" @change="fieldStore.toggleColumnVisibility()">
+                {{ key === 'key' ? 'Key' :
+                   key === 'name' ? '字段名' :
+                   key === 'dataType' ? '类型' :
+                   key === 'description' ? '描述' :
+                   key === 'value' ? '当前值' :
+                   key === 'min' ? '最小值' :
+                   key === 'max' ? '最大值' :
+                   key === 'lastUpdate' ? '最后更新' :
+                   key === 'updateCount' ? '更新次数' : key }}
+              </el-checkbox>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+      <div class="import-export-buttons">
+        <el-button type="primary" size="small" @click="addNewField">添加</el-button>
+        <el-button type="primary" size="small" @click="fieldStore.exportData">导出数据</el-button>
+        <el-button type="primary" size="small" @click="$refs.fileInput.click()">导入数据</el-button>
+        <el-button type="warning" size="small" @click="resetData">重置数据</el-button>
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".json"
+          style="display: none"
+          @change="(e: Event) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (file) fieldStore.importData(file)
+          }"
+         />
+      </div>
+    </div>
+
+    <el-table :data="fieldStore.fields" border stripe>
+      <el-table-column label="操作" width="50" fixed="left">
         <template #default="{ row }">
           <div class="operation-buttons">
-            <el-button v-if="!row.isEditing" @click="startEditing(row)" type="primary" size="small" circle>
-              <el-icon><Edit /></el-icon>
-            </el-button>
-            <el-button v-else @click="saveField(row)" type="success" size="small" circle>
-              <el-icon><Check /></el-icon>
-            </el-button>
-            <el-button @click="deleteField(row.id)" type="danger" size="small" circle>
+            <el-button @click="fieldStore.deleteField(row.id)" type="danger" size="small" circle>
               <el-icon><Delete /></el-icon>
             </el-button>
           </div>
         </template>
       </el-table-column>
 
-      <el-table-column label="Key" min-width="120">
+      <el-table-column v-if="fieldStore.columnVisibility.key" label="Key" min-width="100">
         <template #default="{ row }">
-          <el-input v-if="row.isEditing" v-model="row.key" size="small" />
-          <span v-else>{{ row.key }}</span>
+          <el-input v-model="row.key" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column label="字段名" min-width="120">
+      <el-table-column v-if="fieldStore.columnVisibility.name" label="字段名" min-width="100">
         <template #default="{ row }">
-          <el-input v-if="row.isEditing" v-model="row.name" size="small" />
-          <span v-else>{{ row.name }}</span>
+          <el-input v-model="row.name" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column label="描述" min-width="150">
+      <el-table-column v-if="fieldStore.columnVisibility.dataType" label="数据类型" min-width="80">
         <template #default="{ row }">
-          <el-input v-if="row.isEditing" v-model="row.description" size="small" />
-          <span v-else>{{ row.description || '-' }}</span>
+          <el-select v-model="row.dataType" size="small" @change="updateField">
+            <el-option label="数字" value="number" />
+            <el-option label="字符串" value="string" />
+            <el-option label="布尔值" value="boolean" />
+            <el-option label="对象" value="object" />
+          </el-select>
         </template>
       </el-table-column>
 
-      <el-table-column label="当前值" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.description" label="描述" min-width="150">
+        <template #default="{ row }">
+          <el-input v-model="row.description" size="small" @change="updateField" />
+        </template>
+      </el-table-column>
+
+      <el-table-column v-if="fieldStore.columnVisibility.value" label="当前值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.value }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="最小值" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.min" label="最小值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.min ?? '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="最大值" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.max" label="最大值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.max ?? '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="最后更新" min-width="180">
+      <el-table-column v-if="fieldStore.columnVisibility.lastUpdate" label="最后更新" min-width="120">
         <template #default="{ row }">
-          <span>{{ row.lastUpdate }}</span>
+          <el-tooltip :content="new Date(row.lastUpdate).toLocaleString()" placement="top" effect="dark">
+            <span>{{ new Date(row.lastUpdate).toLocaleTimeString() + '.' + String(new Date(row.lastUpdate).getMilliseconds()).padStart(3, '0') }}</span>
+          </el-tooltip>
         </template>
       </el-table-column>
 
-      <el-table-column label="更新次数" width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.updateCount" label="更新次数" width="100">
         <template #default="{ row }">
           <span>{{ row.updateCount }}</span>
         </template>
@@ -168,7 +170,20 @@ onUnmounted(() => {
 <style scoped>
 .data-table-container {
   height: 100%;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-toolbar {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.import-export-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 .operation-buttons {

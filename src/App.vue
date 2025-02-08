@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import SerialConfig from './components/SerialConfig.vue'
 import SerialLog from './components/SerialLog.vue'
 import Chart3D from './components/Chart3D.vue'
+import ChartPanel from './components/ChartPanel.vue'
 import DataTable from './components/DataTable.vue'
 import SerialQuickSend from './components/SerialQuickSend.vue'
 import SerialScripts from './components/SerialScript.vue'
@@ -10,6 +11,10 @@ import { useDark, useToggle } from '@vueuse/core'
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
+import { ConfigManager } from './utils/ConfigManager'
+
+const configManager = ConfigManager.getInstance()
+const layoutConfig = configManager.useConfig('layout')
 
 const isDark = useDark({
   initialValue: 'dark',
@@ -28,6 +33,25 @@ const toggleFullscreen = () => {
     isFullscreen.value = false
   }
 }
+
+const handleSplitResize = (options: { size: number}[]) => {
+  layoutConfig.value.splitPaneSize = options[0].size
+  handleResize()
+}
+
+const handleTabChange = () => {
+  handleResize()
+}
+
+let resizeTimer: number
+const handleResize = () => {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('resize', { }))
+  }, 100)
+}
+handleResize()
+
 </script>
 
 <template>
@@ -35,7 +59,7 @@ const toggleFullscreen = () => {
     <el-header class="app-header">
       <div class="header-content">
         <div class="header-left">
-          <h1><a href="https://github.com/qdsang/web-serial" target="_blank">Web Serial</a></h1>
+          <h1><a href="https://github.com/qdsang/web-serial-debug" target="_blank">Web Serial</a></h1>
           <SerialConfig class="header-serial-config" />
         </div>
         <div class="header-links">
@@ -51,18 +75,20 @@ const toggleFullscreen = () => {
             circle
             @click="toggleFullscreen()"
           />
-          <a href="https://github.com/qdsang/web-serial" target="_blank">Github</a>
         </div>
       </div>
     </el-header>
     <el-container class="main-container">
-      <Splitpanes class="default-theme">
-        <Pane :size="75" class="w75">
-          <el-tabs type="card" class="lv-card lv-tabs">
-            <el-tab-pane label="日志">
+      <Splitpanes class="default-theme" @resize="handleSplitResize">
+        <Pane :size="layoutConfig.splitPaneSize" class="w75">
+          <el-tabs type="card" class="lv-card lv-tabs" v-model="layoutConfig.leftActiveTab" @tab-click="handleTabChange">
+            <el-tab-pane label="日志" lazy>
               <SerialLog />
             </el-tab-pane>
-            <el-tab-pane label="图表" lazy>
+            <el-tab-pane label="可视化" lazy>
+              <ChartPanel />
+            </el-tab-pane>
+            <el-tab-pane label="姿态" lazy>
               <Chart3D />
             </el-tab-pane>
             <el-tab-pane label="数据表">
@@ -70,8 +96,8 @@ const toggleFullscreen = () => {
             </el-tab-pane>
           </el-tabs>
         </Pane>
-        <Pane :size="25" :min-size="10" :max-size="80" class="w25">
-          <el-tabs type="card" class="lv-card lv-tabs">
+        <Pane class="w25">
+          <el-tabs type="card" class="lv-card lv-tabs" v-model="layoutConfig.rightActiveTab">
             <el-tab-pane label="快捷发送">
               <SerialQuickSend />
             </el-tab-pane>
@@ -222,6 +248,8 @@ html.dark .el-button {
     margin: 8px 0 0 8px;
     padding: 0px 6px;
     height: 24px;
+    transition: all .1s;
+    user-select:none;
   }
   &.el-tabs.el-tabs--top.el-tabs--card>.el-tabs__header .el-tabs__item.is-active {
     background-color: #f5f5f5;

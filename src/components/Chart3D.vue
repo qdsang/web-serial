@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-        // @ts-ignore
+// @ts-ignore
 import * as THREE from 'three'
-        // @ts-ignore
+// @ts-ignore
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-        // @ts-ignore
+// @ts-ignore
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-        // @ts-ignore
+// @ts-ignore
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { useDark } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
+// @ts-ignore
+import Stats from 'stats.js'
 
 const container = ref<HTMLDivElement | null>(null)
 const pitch = ref(0)
@@ -30,10 +32,23 @@ let renderer: THREE.WebGLRenderer
 let model: THREE.Group
 let controls: OrbitControls
 let animationFrameId: number
+let stats: Stats
 
 const initScene = () => {
   scene = new THREE.Scene()
   scene.background = new THREE.Color(sceneBackground.value)
+
+  // 添加坐标轴辅助器
+  const axesHelper = new THREE.AxesHelper(5)
+  scene.add(axesHelper)
+
+  // 初始化性能监视器
+  stats = new Stats()
+  stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
+  stats.dom.style.position = 'absolute'
+  stats.dom.style.left = '0px'
+  stats.dom.style.top = '0px'
+  container.value!.appendChild(stats.dom)
 
   camera = new THREE.PerspectiveCamera(75, container.value!.clientWidth / container.value!.clientHeight, 0.1, 1000)
   camera.position.set(2, 2, 2)
@@ -191,6 +206,7 @@ const addLights = () => {
 
 const animate = () => {
   animationFrameId = requestAnimationFrame(animate)
+  stats.begin()
   
   if (model) {
     model.rotation.set(
@@ -202,6 +218,7 @@ const animate = () => {
 
   controls.update()
   renderer.render(scene, camera)
+  stats.end()
 }
 
 const handleResize = () => {
@@ -213,7 +230,10 @@ const handleResize = () => {
 }
 
 const handleImuData = (event: CustomEvent) => {
-  const { pitch: p, roll: r, yaw: y } = event.detail
+  const data = event.detail
+  if (!data || typeof data.pitch !== 'number') return
+  
+  const { pitch: p, roll: r, yaw: y } = data
   pitch.value = p
   roll.value = r
   yaw.value = y
@@ -238,7 +258,7 @@ onMounted(() => {
   initScene()
   animate()
   window.addEventListener('resize', handleResize)
-  window.addEventListener('data-imu', handleImuData as EventListener)
+  window.addEventListener('data-update', handleImuData as EventListener)
 })
 
 onUnmounted(() => {
@@ -246,7 +266,7 @@ onUnmounted(() => {
     cancelAnimationFrame(animationFrameId)
   }
   window.removeEventListener('resize', handleResize)
-  window.removeEventListener('data-imu', handleImuData as EventListener)
+  window.removeEventListener('data-update', handleImuData as EventListener)
   renderer.dispose()
 })
 </script>

@@ -13,8 +13,8 @@ const displayConfig = configManager.useConfig('display')
 const isDark = useDark()
 
 const logOptions = ref(displayConfig.value)
-const timeOut = ref(displayConfig.value.timeOut)
 const serialHelper = SerialHelper.getInstance()
+let logBufferAll: string[] = []
 let logBuffer = new Uint8Array()
 let timeoutId: number | null = null
 let terminal: Terminal | null = null
@@ -24,6 +24,7 @@ const clearLog = () => {
   if (terminal) {
     terminal.clear()
   }
+  logBufferAll = []
 }
 
 const handleTerminalData = (data: string) => {
@@ -48,7 +49,8 @@ const initTerminal = () => {
     convertEol: true,
     fontFamily: 'Consolas,Liberation Mono,Menlo,Courier,monospace',
     fontSize: 14,
-    theme: getTerimalTheme(isDark.value)
+    theme: getTerimalTheme(isDark.value),
+    scrollback: 10000  // 增加缓冲区大小到10000行
   })
   
   const searchAddon = new SearchAddon();
@@ -62,16 +64,39 @@ const initTerminal = () => {
   const terminalElement = document.getElementById('terminal')
   if (terminalElement) {
     terminal.open(terminalElement)
-    // fitAddon.fit()
+    // 显示欢迎信息
+    const logo = `
+\x1b[36m   _    _      _      ____            _       _ 
+  | |  | |    | |    / ___|          (_)     | |
+  | |  | | ___| |__ \\___ \\ ___ _ __ _  __ _| |
+  | |/\\| |/ _ \\ '_ \\___) / _ \\ '__| |/ _\` | |
+  \\  /\\  /  __/ |_) |__/ /  __/ |  | | (_| | |
+   \\/  \\/ \\___|_.__/|____/\\___|_|  |_|\\__,_|_|
+\x1b[0m
+\x1b[35m=== Web Serial Debug Tool ===\x1b[0m
+\x1b[32m版本: v1.5.0\x1b[0m
+\x1b[0m
+功能特点:
+- 🔌 支持串口和WebUSB设备连接
+- 📝 实时数据收发显示
+- 🎨 支持文本和HEX格式数据发送
+- 📜 支持自定义脚本编写和执行
+- 🎯 快捷发送功能
+- ⚙️ 可配置的显示选项
+- 🌙 暗色主题支持
+
+\x1b[33m开始使用:
+1. 点击顶部的连接按钮选择串口设备
+2. 配置串口参数（波特率等）
+3. 开始接收/发送数据\x1b[0m
+
+`
+    terminal.write(logo)
   }
 
   setTimeout(() => {
       fitAddon?.fit()
   }, 120)
-}
-
-const handleTimeOutChange = (value: number) => {
-  timeOut.value = value
 }
 
 const toggleOption = (option: string) => {
@@ -95,9 +120,10 @@ const processSerialData = (data: Uint8Array) => {
       if (logOptions.value.autoScroll) {
         terminal.scrollToBottom()
       }
+      logBufferAll.push(message)
     }
     logBuffer = new Uint8Array()
-  }, timeOut.value)
+  }, logOptions.value.timeOut)
 }
 
 watch(isDark, (newValue) => {
@@ -106,18 +132,26 @@ watch(isDark, (newValue) => {
   }
 })
 
+const handleResize = () => {
+  setTimeout(() => {
+      fitAddon?.fit()
+  }, 120)
+}
+
 onMounted(() => {
   initTerminal()
 
   window.addEventListener('serial-data', ((event: CustomEvent) => {
     processSerialData(event.detail)
   }) as EventListener)
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   window.removeEventListener('serial-data', ((event: CustomEvent) => {
     processSerialData(event.detail)
   }) as EventListener)
+  window.removeEventListener('resize', handleResize)
   
   if (timeoutId) {
     clearTimeout(timeoutId)
@@ -133,10 +167,7 @@ const exportLog = () => {
   
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
   const filename = `serial-log-${timestamp}.txt`
-  // @ts-ignore
-  const lines = terminal.buffer.active.getLines()
-  // @ts-ignore
-  const content = lines.map(line => line?.translateToString()).filter(Boolean).join('\n')
+  const content = logBufferAll.join('\n')
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -217,16 +248,15 @@ const exportLog = () => {
       <el-tooltip
         class="box-item"
         effect="dark"
-        content="分包超时时间 ms"
+        content="分包超时时间(ms)"
         placement="bottom"
       >
         <el-input-number
-          v-model="timeOut"
-          :min="1"
+          v-model="logOptions.timeOut"
+          :min="0"
           :max="3000"
           :step="5"
           size="small"
-          @change="handleTimeOutChange"
         >
           <template #prefix></template>
           <template #suffix>

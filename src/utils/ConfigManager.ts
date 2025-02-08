@@ -30,6 +30,18 @@ interface SendConfig {
   historyMaxLength: number
 }
 
+interface LayoutConfig {
+  splitPaneSize: number
+  leftActiveTab: string
+  rightActiveTab: string
+}
+
+interface ChartConfig {
+  id: number
+  name: string
+  fields: string[]
+}
+
 type ConfigKey = keyof typeof defaultConfigs
 
 const defaultConfigs = {
@@ -48,7 +60,7 @@ const defaultConfigs = {
     showText: true,
     showNewline: true,
     autoScroll: false,
-    timeOut: 50
+    timeOut: 20
   } as DisplayConfig,
 
   send: {
@@ -61,7 +73,21 @@ const defaultConfigs = {
     content: "",
     history: [],
     historyMaxLength: 100
-  } as SendConfig
+  } as SendConfig,
+
+  layout: {
+    splitPaneSize: 75,
+    leftActiveTab: '0',
+    rightActiveTab: '0'
+  } as LayoutConfig,
+
+  charts: {
+    list: [{
+      id: 1,
+      name: 'Chart 1',
+      fields: ['pitch', 'roll', 'yaw']
+    }] as ChartConfig[]
+  },
 }
 
 export class ConfigManager {

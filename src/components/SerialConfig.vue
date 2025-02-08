@@ -9,14 +9,18 @@ const serialConfig = configManager.useConfig('serial')
 
 const scriptManager = ScriptManager.getInstance()
 
+interface Device {
+  id: string
+  title: string
+  type: string
+  port: SerialPort | USBDevice | BluetoothDevice
+}
 
 const serialPort = ref<SerialPort | null>(null)
 const serialWriter = ref<WritableStreamDefaultWriter | null>(null)
 const serialReader = ref<ReadableStreamDefaultReader | null>(null)
 const isConnected = ref(false)
-const authorizedPorts = ref<SerialPort[]>([])
-const authorizedWebUSBDevices = ref<USBDevice[]>([])
-const authorizedBluetoothDevices = ref<BluetoothDevice[]>([])
+const authorizedDevices = ref<Device[]>([])
 const selectedDevice = ref('')
 const baudRates = [
   1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600
@@ -33,8 +37,56 @@ const handleConfigChange = async () => {
     }
   }
 }
-
 watch(serialConfig, handleConfigChange, { deep: true })
+
+const authorizedDeviceSerialPort = (port: SerialPort) => {
+  const id = 'serialport_' + (port.getInfo().usbProductId?.toString() || '')
+
+  const device = authorizedDevices.value.find(d => d.id === id)
+  if (device) {
+    return device
+  }
+  const device2 = {
+    id: id,
+    title: getDeviceTitle(port),
+    type: 'serialport',
+    port: port
+  }
+  authorizedDevices.value.push(device2)
+  return device2
+}
+
+const authorizedDeviceUSB = (port: USBDevice) => {
+  const id ='usb_' + port.serialNumber
+  const device = authorizedDevices.value.find(d => d.id === id)
+  if (device) {
+    return device
+  }
+  const device2 = {
+    id: id,
+    title: getWebUSBDeviceTitle(port),
+    type:'usb',
+    port: port
+  }
+  authorizedDevices.value.push(device2)
+  return device2
+}
+
+const authorizedDeviceBluetooth = (port: BluetoothDevice) => {
+  const id ='bluetooth_' + port.id
+  const device = authorizedDevices.value.find(d => d.id === id)
+  if (device) {
+    return device
+  }
+  const device2 = {
+    id: id,
+    title: getBluetoothDeviceTitle(port),
+    type:'bluetooth',
+    port: port
+  }
+  authorizedDevices.value.push(device2)
+  return device2
+}
 
 const DataEmit = async (data: Uint8Array) => {
   const runtimer = await scriptManager.getRuntimer()
@@ -48,8 +100,11 @@ const connectSerial = async () => {
   try {
     const port = await navigator.serial.requestPort()
     await connectToPort(port)
-  } catch (error) {
-    ElMessage.error('串口连接失败：' + error)
+  } catch (error: any) {
+    if (error.message != "Failed to execute 'requestPort' on 'Serial': No port selected by the user.") {
+      ElMessage.error('串口连接失败：' + error)
+    }
+    console.error(error);
     selectedDevice.value = ''
   }
 }
@@ -59,12 +114,11 @@ const connectWebUSB = async () => {
     const device = await navigator.usb.requestDevice({
       filters: [] // 允许所有设备
     })
-    if (!authorizedWebUSBDevices.value.some(d => d.serialNumber === device.serialNumber)) {
-      authorizedWebUSBDevices.value.push(device)
-    }
+    authorizedDeviceUSB(device)
     ElMessage.success('WebUSB设备已授权')
   } catch (error) {
     ElMessage.error('WebUSB设备授权失败：' + error)
+    console.error(error);
     selectedDevice.value = ''
   }
 }
@@ -74,12 +128,11 @@ const connectBluetooth = async () => {
     const device = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true
     })
-    if (!authorizedBluetoothDevices.value.some(d => d.id === device.id)) {
-      authorizedBluetoothDevices.value.push(device)
-    }
+    authorizedDeviceBluetooth(device)
     ElMessage.success('蓝牙设备已授权')
   } catch (error) {
     ElMessage.error('蓝牙设备授权失败：' + error)
+    console.error(error);
     selectedDevice.value = ''
   }
 }
@@ -107,35 +160,31 @@ const handleDeviceAuthorize = () => {
       startSimulation()
       break
     default:
-      const selectedPort = authorizedPorts.value.find(p => p.getInfo().usbProductId?.toString() === selectedDevice.value)
-      if (selectedPort) {
-        connectToPort(selectedPort)
-        return
-      }
-      const selectedUSBDevice = authorizedWebUSBDevices.value.find(d => d.serialNumber === selectedDevice.value)
-      if (selectedUSBDevice) {
-        // 处理USB设备连接
-        return
-      }
-      const selectedBluetoothDevice = authorizedBluetoothDevices.value.find(d => d.id === selectedDevice.value)
-      if (selectedBluetoothDevice) {
-        // 处理蓝牙设备连接
-        return
+
+      const device = authorizedDevices.value.find(p => p.id === selectedDevice.value)
+      if (device) {
+        if (device.type === 'serialport') {
+          connectToPort(device.port as SerialPort)
+          return
+        } else if (device.type ==='usb') {
+          // 处理USB设备连接
+          return
+        } else if (device.type ==='bluetooth') {
+          // 处理蓝牙设备连接
+          return
+        }
       }
   }
 }
 
 const connectToPort = async (port: SerialPort) => {
   try {
+    authorizedDeviceSerialPort(port)
     await port.open(serialConfig.value)
     serialPort.value = port
-    console.log(port)
     serialWriter.value = port.writable.getWriter()
     serialReader.value = port.readable.getReader()
     isConnected.value = true
-    if (!authorizedPorts.value.includes(port)) {
-      authorizedPorts.value.push(port)
-    }
     ElMessage.success('串口连接成功')
     startReading()
   } catch (error) {
@@ -154,14 +203,20 @@ const disconnectSerial = async () => {
       await serialWriter.value.close()
       serialWriter.value.releaseLock()
     }
+  } catch (error) {
+    console.log(error)
+  }
+  try {
     if (serialPort.value) {
       await serialPort.value.close()
     }
-    isConnected.value = false
-    ElMessage.success('串口已断开')
+    ElMessage.success('设备已断开')
   } catch (error) {
-    ElMessage.error('断开串口失败：' + error)
+    ElMessage.error('断开设备失败：' + error)
+    console.log(error)
   }
+  isConnected.value = false
+  selectedDevice.value = ''
 }
 
 const startReading = async () => {
@@ -198,14 +253,28 @@ const handleSerialSend = async (event: CustomEvent) => {
   }
 }
 
+const wsConfig = ref({
+  url: '',
+  history: [] as string[]
+})
+
+const handleWsConfigChange = (value: string) => {
+  if (!value) return
+  wsConfig.value.url = value
+  if (!wsConfig.value.history.includes(value)) {
+    wsConfig.value.history.push(value)
+    localStorage.setItem('wsConfig', JSON.stringify(wsConfig.value))
+  }
+}
+
 onMounted(() => {
   // @ts-ignore
   window.addEventListener('serial-send', ((event: CustomEvent) => handleSerialSend(event)) as EventListener)
   navigator.serial?.getPorts().then(ports => {
-    authorizedPorts.value = ports
+    ports.map(authorizedDeviceSerialPort)
   })
   navigator.usb?.getDevices().then(devices => {
-    authorizedWebUSBDevices.value = devices
+    devices.map(authorizedDeviceUSB)
   })
 })
 
@@ -229,14 +298,17 @@ const startSimulation = () => {
     }
   })
 
+  let pitch = 0.0, roll = 0.0, yaw = 0.0
   simulationTimer = window.setInterval(() => {
-    const randomLength = Math.floor(Math.random() * 100) + 1
-    const randomData = new Uint8Array(randomLength)
-    for (let i = 0; i < randomLength; i++) {
-      randomData[i] = Math.floor(Math.random() * 256)
-    }
-    DataEmit(randomData)
-  }, 2000)
+    // 模拟数据
+    pitch += Math.random()*0.4 - 0.2;
+    roll += Math.random()*0.4 - 0.1;
+    yaw += Math.random()*0.4 - 0;
+
+    let text = `pitch:${pitch.toFixed(2)},roll:${roll.toFixed(2)},yaw:${yaw.toFixed(2)}\n`
+    const data = new TextEncoder().encode(text)
+    DataEmit(data)
+  }, 50)
 
   serialWriter.value = writable.getWriter()
   serialReader.value = readable.getReader()
@@ -248,7 +320,6 @@ const stopSimulation = () => {
     clearInterval(simulationTimer)
     simulationTimer = null
     isConnected.value = false
-    
   }
 }
 
@@ -316,8 +387,12 @@ const getBluetoothDeviceTitle = (device: any) => {
 }
 
 const handleConenctClick = () => {
-  // @ts-ignore
-  isConnected ? disconnectSerial() : connectToPort(serialPort.value)
+  if (isConnected.value) {
+    disconnectSerial()
+  } else {
+    // @ts-ignore
+    connectToPort(serialPort.value)
+  }
 }
 
 </script>
@@ -332,27 +407,27 @@ const handleConenctClick = () => {
             <el-option-group label="串口设备">
               <el-option label="授权串口设备" value="authorizedSerial"></el-option>
               <el-option
-                v-for="port in authorizedPorts"
-                :key="port.getInfo().usbVendorId"
-                :label="getDeviceTitle(port)"
-                :value="port.getInfo().usbProductId?.toString() || ''"
+                v-for="device in authorizedDevices.filter(device => device.type == 'serialport')"
+                :key="device.id"
+                :label="device.title"
+                :value="device.id"
               />
             </el-option-group>
             <el-option-group label="WebUSB设备">
               <el-option label="授权WebUSB设备" value="authorizedUSB"></el-option>
               <el-option
-                v-for="device in authorizedWebUSBDevices"
-                :key="device.serialNumber"
-                :label="getWebUSBDeviceTitle(device)"
-                :value="device.serialNumber"
+                v-for="device in authorizedDevices.filter(device => device.type == 'usb')"
+                :key="device.id"
+                :label="device.title"
+                :value="device.id"
               />
             </el-option-group>
             <el-option-group label="蓝牙设备">
               <el-option label="授权蓝牙设备" value="authorizedBluetooth"></el-option>
               <el-option
-                v-for="device in authorizedBluetoothDevices"
+                v-for="device in authorizedDevices.filter(device => device.type == 'bluetooth')"
                 :key="device.id"
-                :label="getBluetoothDeviceTitle(device)"
+                :label="device.title"
                 :value="device.id"
               />
             </el-option-group>
@@ -370,7 +445,14 @@ const handleConenctClick = () => {
           </el-button>
         </el-button-group>
       </div>
-      <el-form v-if="selectedDevice != 'websocket'" :model="serialConfig" :inline="true" size="small" class="config-section">
+      <el-form v-if="selectedDevice == 'websocket'" :model="wsConfig" :inline="true" size="small" class="config-section">
+        <el-form-item label="ws">
+          <el-select v-model="wsConfig.url" filterable allow-create @change="handleWsConfigChange" style="width: 300px;">
+            <el-option v-for="url in wsConfig.history" :key="url" :label="url" :value="url" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <el-form v-else :model="serialConfig" :inline="true" size="small" class="config-section">
         <el-form-item label="波特率">
           <el-select v-model="serialConfig.baudRate" style="width: 80px;">
             <el-option v-for="rate in baudRates" :key="rate" :value="rate" />
@@ -400,12 +482,6 @@ const handleConenctClick = () => {
           </el-select>
         </el-form-item>
       </el-form>
-      <el-form v-else :model="serialConfig" :inline="true" size="small" class="config-section">
-        <el-form-item label="ws">
-          <el-select v-model="serialConfig" style="width: 300px;">
-          </el-select>
-        </el-form-item>
-      </el-form>
     </div>
   </div>
 </template>
@@ -418,6 +494,7 @@ const handleConenctClick = () => {
 .config-container {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   gap: 15px;
   align-items: center;
 }
@@ -435,7 +512,7 @@ const handleConenctClick = () => {
 
 .config-section {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   margin: 0;
 }
 
