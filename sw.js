@@ -2,7 +2,9 @@
 const CACHE_NAME = 'web-serial-debug-cache-v1';
 const urlsToCache = [
   './',
-  './index.html'
+  './index.html',
+  './manifest.json',
+  './vite.svg'
 ];
 
 self.addEventListener('install', (event) => {
