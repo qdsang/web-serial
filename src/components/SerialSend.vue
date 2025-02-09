@@ -58,19 +58,23 @@ const handleIntervalChange = (value: number) => {
 let historyIndex = -1
 
 const handleKeyDown = (e: KeyboardEvent) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+  if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.key === 'Enter') {
     sendData()
     historyIndex = -1
-    return
+    e.preventDefault()
+    return false
   }
 
   const target = e.target as HTMLTextAreaElement
-  const cursorPosition = target.selectionStart
-  const contentBeforeCursor = sendConfig.value.content.slice(0, cursorPosition)
-  const isFirstLine = !contentBeforeCursor.includes('\n')
-
-  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !isFirstLine) {
-    return
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    const cursorPosition = target.selectionStart
+    const contentBeforeCursor = sendConfig.value.content.slice(0, cursorPosition)
+    const isFirstLine = !contentBeforeCursor.includes('\n')
+    if (historyIndex == -1 && !isFirstLine) {
+      return
+    }
+  } else {
+    historyIndex = -1
   }
 
   if (e.key === 'ArrowUp') {
@@ -114,8 +118,11 @@ const handleKeyDown = (e: KeyboardEvent) => {
       </div>
       <el-checkbox v-model="sendConfig.addChecksum" label="校验和" class="me-2" />
       <el-checkbox v-model="sendConfig.autoSend" @change="toggleAutoSend" label="自动发送" class="me-2" />
-      <el-input-number v-model="sendConfig.autoSendInterval" :min="100" :max="10000" :step="100" @change="handleIntervalChange" size="small" class="me-2" />
-      <span>ms</span>
+      <el-input-number v-model="sendConfig.autoSendInterval" :min="100" :max="10000" :step="100" @change="handleIntervalChange" size="small" class="me-2" title="自动发送时间间隔">
+        <template #suffix>
+          <span>ms</span>
+        </template>
+      </el-input-number>
       <el-button type="primary" @click="sendData" class="me-2">发送</el-button>
     </div>
     <div class="send-content">

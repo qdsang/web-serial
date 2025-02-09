@@ -12,7 +12,7 @@ export default defineConfig({
         manualChunks: {
           'vendor': [],
           'vue': ['vue', 'vue-router', '@vueuse/core', 'pinia'],
-          'three': ['three', 'stats.js'],
+          'three': ['three', 'stats.js', 'three-particle-fire'],
           'uplot': ['uplot'],
           'xterm': ['xterm', 'xterm-addon-fit', 'xterm-addon-web-links', '@xterm/addon-search'],
           'utils': ['splitpanes', 'element-plus']

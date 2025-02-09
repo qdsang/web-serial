@@ -440,7 +440,7 @@ const handleConenctClick = () => {
               <el-option label="WebSocket" value="websocket"></el-option>
               <el-option label="脚本" value="script"></el-option>
               <el-option label="Stlink" value="webstlink"></el-option>
-              <el-option label="IMU模拟数据" value="mock"></el-option>
+              <el-option label="模拟数据(IMU)" value="mock"></el-option>
             </el-option-group>
           </el-select>
         </div>
@@ -512,7 +512,7 @@ const handleConenctClick = () => {
 }
 
 .port-list {
-  width: 120px;
+  width: 160px;
 }
 
 .config-section {

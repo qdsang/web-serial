@@ -12,35 +12,43 @@ import { useDark } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
 // @ts-ignore
 import Stats from 'stats.js'
+// @ts-ignore
+import particleFire from 'three-particle-fire';
+try { particleFire.install( { THREE: THREE } ); } catch (e) { }
 
 const container = ref<HTMLDivElement | null>(null)
 const pitch = ref(0)
 const roll = ref(0)
 const yaw = ref(0)
-const currentModel = ref('arrow')
+const currentModel = ref('rocket')
 const customModel = ref<THREE.Group | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const isDark = useDark()
 const sceneBackground = computed(() => isDark.value ? 0x1a1a1a : 0xf0f0f0)
 // const gridColor = computed(() => isDark.value ? 0x404040 : 0x808080)
-const modelColor = computed(() => isDark.value ? 0x4a9eff : 0x3366ff)
+const modelColor = computed(() => isDark.value ? 0x404040 : 0x3366ff)
+// const modelColor = computed(() => isDark.value ? 0xF4F5F0 : 0x3366ff)
 
 let scene: THREE.Scene
+let clock: THREE.Clock
 let camera: THREE.PerspectiveCamera
 let renderer: THREE.WebGLRenderer
 let model: THREE.Group
 let controls: OrbitControls
 let animationFrameId: number
 let stats: Stats
+let rocketFireMesh: any
 
 const initScene = () => {
   scene = new THREE.Scene()
   scene.background = new THREE.Color(sceneBackground.value)
 
   // 添加坐标轴辅助器
-  const axesHelper = new THREE.AxesHelper(5)
+  const axesHelper = new THREE.AxesHelper(1.6)
   scene.add(axesHelper)
+
+  clock = new THREE.Clock()
 
   // 初始化性能监视器
   stats = new Stats()
@@ -98,6 +106,50 @@ const createArrowModel = () => {
   return group
 }
 
+const createRocketModel = () => {
+  const group = new THREE.Group()
+
+  // 箭头主体
+  const bodyGeometry = new THREE.ConeGeometry(0.2, 0.5, 12)
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    color: modelColor.value,
+    metalness: 0.6,
+    roughness: 0.3,
+    envMapIntensity: 1.2
+  })
+  const body = new THREE.Mesh(bodyGeometry, bodyMaterial)
+  body.position.set(0, 1.05, 0)
+  // body.rotation.x = -Math.PI / 2
+  group.add(body)
+
+  const tailGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.6)
+  const tailMaterial = new THREE.MeshStandardMaterial({
+    color: modelColor.value,
+    metalness: 0.6,
+    roughness: 0.3,
+    envMapIntensity: 1.2
+  })
+  const tail = new THREE.Mesh(tailGeometry, tailMaterial)
+  tail.position.set(0, 0, 0)
+  group.add(tail)
+
+  const fireRadius = 0.09;
+  const fireHeight = 1.5;
+  const particleCount = 800;
+  const height = window.innerHeight;
+
+  const geometry0 = new particleFire.Geometry( fireRadius, fireHeight, particleCount );
+  const material0 = new particleFire.Material( { color: 0xff2200 } );
+  material0.setPerspective( camera.fov, height );
+  rocketFireMesh = new THREE.Points( geometry0, material0 );
+  rocketFireMesh.rotation.x = 3.14
+  rocketFireMesh.position.set(0, -0.92, 0)
+
+  group.add(rocketFireMesh)
+
+  return group
+}
+
 const createCubeModel = () => {
   const group = new THREE.Group()
 
@@ -120,6 +172,9 @@ const createModel = (type: string) => {
   }
 
   switch (type) {
+    case 'rocket':
+      model = createRocketModel()
+      break
     case 'arrow':
       model = createArrowModel()
       break
@@ -205,6 +260,7 @@ const addLights = () => {
 }
 
 const animate = () => {
+  var delta = clock.getDelta();
   animationFrameId = requestAnimationFrame(animate)
   stats.begin()
   
@@ -215,6 +271,9 @@ const animate = () => {
       THREE.MathUtils.degToRad(pitch.value)
     )
   }
+  if (rocketFireMesh) {
+    rocketFireMesh.material.update( delta );
+  }
 
   controls.update()
   renderer.render(scene, camera)
@@ -223,9 +282,15 @@ const animate = () => {
 
 const handleResize = () => {
   if (container.value && camera && renderer) {
-    camera.aspect = container.value.clientWidth / container.value.clientHeight
+    let width = container.value.clientWidth
+    let height = container.value.clientHeight
+    camera.aspect = width / height
     camera.updateProjectionMatrix()
-    renderer.setSize(container.value.clientWidth, container.value.clientHeight)
+    renderer.setSize(width, height)
+
+    if (rocketFireMesh) {
+      rocketFireMesh.material.setPerspective( camera.fov, height );
+    }
   }
 }
 

@@ -12,15 +12,17 @@ export interface Runtimer {
   DataSenderInterface: Function | null
 }
 
-const demo1 = `
-// 处理接收的数据  数据格式："pitch:-0.13,roll:0.00,yaw:0.07\\n"
-let cache = '';
+const demo1 = `let cache = '';
+
+// 处理接收的数据
 async function DataReceiver(data) {
   cache += uint8ArrayToString(data);
+  // 数据格式："pitch:-0.13,roll:0.00,yaw:0.07\\n"
 
   if (cache.indexOf('\\n') !== -1) {
     const lines = cache.split('\\n');
     cache = lines.pop() || '';
+    
     for (const line of lines) {
       let files = line.split(',')
       let data = {};
@@ -40,7 +42,9 @@ async function DataReceiver(data) {
 
 // 处理发送的数据
 async function DataSender(data) {
-  await sleep(100);
+  // checksum
+  // await sleep(10);
+
   return data;
 }
 
@@ -50,6 +54,7 @@ setInterval(async () => {
   // sendHex(bytes);
 }, 1000);
 
+// 支持的函数
 // stringToUint8Array();
 // uint8ArrayToHexString();
 // uint8ArrayToString();

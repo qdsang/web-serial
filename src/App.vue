@@ -94,6 +94,8 @@ handleResize()
             <el-tab-pane label="数据表">
               <DataTable />
             </el-tab-pane>
+            <el-tab-pane label="工具箱">
+            </el-tab-pane>
           </el-tabs>
         </Pane>
         <Pane class="w25">

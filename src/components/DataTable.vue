@@ -64,7 +64,7 @@ onUnmounted(() => {
               <el-checkbox v-model="fieldStore.columnVisibility[key]" @change="fieldStore.toggleColumnVisibility()">
                 {{ key === 'key' ? 'Key' :
                    key === 'name' ? '字段名' :
-                   key === 'dataType' ? '类型' :
+                   key === 'dataType' ? '数据类型' :
                    key === 'keyAddr' ? '内存地址' :
                    key === 'keySize' ? '内存大小' :
                    key === 'description' ? '描述' :
