@@ -1012,6 +1012,11 @@ vue-demi@*, vue-demi@^0.14.10:
   resolved "https://repo.huaweicloud.com/repository/npm/vue-demi/-/vue-demi-0.14.10.tgz#afc78de3d6f9e11bf78c55e8510ee12814522f04"
   integrity sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==
 
+vue-draggable-resizable@^3.0.0:
+  version "3.0.0"
+  resolved "https://repo.huaweicloud.com/repository/npm/vue-draggable-resizable/-/vue-draggable-resizable-3.0.0.tgz#82146819bfff8007d66a001d39a3227253d5d3f2"
+  integrity sha512-kABSggcXPoDB8dOTVE09ZkccxiMdNDUaLl7STTeghsFE3o+mk653iumrkmjKLfIBA/w5ZXWJmarBqoqsmWLzEg==
+
 vue-router@^4.5.0:
   version "4.5.0"
   resolved "https://repo.huaweicloud.com/repository/npm/vue-router/-/vue-router-4.5.0.tgz#58fc5fe374e10b6018f910328f756c3dae081f14"

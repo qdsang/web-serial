@@ -7,6 +7,10 @@ import { ElMessage } from 'element-plus'
 import { useFieldStore } from '../store/fieldStore'
 import { ConfigManager } from '../utils/ConfigManager'
 
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 const fieldStore = useFieldStore()
 
 interface ChartConfig {
@@ -138,8 +142,7 @@ const initUplot = (chart: ChartConfig, container: HTMLElement) => {
   chart.container = container
 }
 
-const updateChartData = (event: CustomEvent) => {
-  const data = event.detail
+const updateChartData = (data: any) => {
   if (typeof data !== 'object' || data === null) return
 
   const timestamp = Date.now()
@@ -237,12 +240,12 @@ const handleResize = () => {
 
 onMounted(() => {
   loadChartsConfig()
-  window.addEventListener('data-update', updateChartData as EventListener)
+  eventCenter.on(EventNames.DATA_UPDATE, updateChartData)
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('data-update', updateChartData as EventListener)
+  eventCenter.off(EventNames.DATA_UPDATE, updateChartData)
   window.removeEventListener('resize', handleResize)
   charts.value.forEach(chart => {
     if (chart.uplot) {
@@ -319,7 +322,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 12px;
 }
 
 .chart-controls {

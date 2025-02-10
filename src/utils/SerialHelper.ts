@@ -1,3 +1,8 @@
+
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 export class SerialHelper {
   private static instance: SerialHelper;
   private textEncoder: TextEncoder;
@@ -145,7 +150,7 @@ export class SerialHelper {
       if (data) {
         try {
           // 触发发送事件
-          window.dispatchEvent(new CustomEvent('serial-send', { detail: data }));
+          eventCenter.emit(EventNames.SERIAL_SEND, data)
           // 添加适当的延迟以防止数据发送过快
           await new Promise(resolve => setTimeout(resolve, 10));
         } catch (error) {

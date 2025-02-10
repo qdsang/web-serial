@@ -3,11 +3,16 @@ import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { SerialHelper } from '../utils/SerialHelper'
 
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 interface QuickSendItem {
   id: number
   name: string
   content: string
   type: 'text' | 'hex'
+  addCRLFType: string
 }
 
 interface QuickSendGroup {
@@ -43,8 +48,8 @@ export const useQuickSendStore = defineStore('quickSend', () => {
       return
     }
 
-    const data = serialHelper.stringToUint8Array(item.content, item.type === 'hex')
-    window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
+    const data = serialHelper.stringToUint8Array(item.content + item.addCRLFType, item.type === 'hex')
+    eventCenter.emit(EventNames.SERIAL_SEND, data)
   }
 
   // 切换自动发送
@@ -64,7 +69,8 @@ export const useQuickSendStore = defineStore('quickSend', () => {
       id: Date.now(),
       name: '新建项目',
       content: '',
-      type: 'text'
+      type: 'text',
+      addCRLFType: ''
     })
   }
 
@@ -168,26 +174,30 @@ export const useQuickSendStore = defineStore('quickSend', () => {
           {
               id: 1,
               name: '查询版本',
-              content: 'AT+VERSION?\r\n',
-              type: 'text'
+              content: 'AT+VERSION?',
+              type: 'text',
+              addCRLFType: '\n'
           },
           {
               id: 2,
               name: '重启设备',
-              content: 'AT+RESET\r\n',
-              type: 'text'
+              content: 'AT+RESET',
+              type: 'text',
+              addCRLFType: '\n'
           },
           {
               id: 3,
               name: '查询状态',
-              content: 'AT+STATUS?\r\n',
-              type: 'text'
+              content: 'AT+STATUS?',
+              type: 'text',
+              addCRLFType: '\n'
           },
           {
               id: 4,
               name: '16进制测试',
               content: '48 45 4C 4C 4F',
-              type: 'hex'
+              type: 'hex',
+              addCRLFType: ''
           }
         ]
       }]

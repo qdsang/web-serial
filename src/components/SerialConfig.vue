@@ -3,11 +3,14 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ConfigManager } from '../utils/ConfigManager'
 import { ScriptManager } from '../utils/ScriptManager'
+import { EventCenter, EventNames } from '../utils/EventCenter'
 
 const configManager = ConfigManager.getInstance()
 const serialConfig = configManager.useConfig('serial')
 
 const scriptManager = ScriptManager.getInstance()
+
+const eventCenter = EventCenter.getInstance()
 
 interface Device {
   id: string
@@ -22,9 +25,7 @@ const serialReader = ref<ReadableStreamDefaultReader | null>(null)
 const isConnected = ref(false)
 const authorizedDevices = ref<Device[]>([])
 const selectedDevice = ref('')
-const baudRates = [
-  1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600
-]
+const baudRates = [921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200]
 
 const handleConfigChange = async () => {
   if (isConnected.value && serialPort.value) {
@@ -93,7 +94,7 @@ const DataEmit = async (data: Uint8Array) => {
   if (runtimer.DataReceiverInterface) {
     data = await runtimer.DataReceiverInterface(data);
   }
-  window.dispatchEvent(new CustomEvent('serial-data', { detail: data }))
+  eventCenter.emit(EventNames.SERIAL_DATA, data)
 }
 
 const connectSerial = async () => {
@@ -179,7 +180,7 @@ const handleDeviceAuthorize = () => {
 
 const connectToPort = async (port: SerialPort) => {
   try {
-    authorizedDeviceSerialPort(port)
+    const device = authorizedDeviceSerialPort(port)
     await port.open(serialConfig.value)
     serialPort.value = port
     serialWriter.value = port.writable.getWriter()
@@ -187,8 +188,10 @@ const connectToPort = async (port: SerialPort) => {
     isConnected.value = true
     ElMessage.success('串口连接成功')
     startReading()
+    selectedDevice.value = device.id
   } catch (error) {
     ElMessage.error('串口连接失败：' + error)
+    console.log(error)
   }
 }
 
@@ -223,6 +226,7 @@ const startReading = async () => {
   while (isConnected.value && serialReader.value) {
     try {
       const { value, done } = await serialReader.value.read()
+      // console.log('startReading', value.length, done, Date.now())
       if (done) {
         break
       }
@@ -234,12 +238,15 @@ const startReading = async () => {
   }
 }
 
-const handleSerialSend = async (event: CustomEvent) => {
+const handleSerialSend = async (data: Uint8Array) => {
   if (!isConnected.value || !serialWriter.value) {
-    ElMessage.error('串口未连接')
+    if (data.length == 1 && data[0] == 13) {
+      eventCenter.emit(EventNames.TERM_WRITE, data)
+    } else {
+      ElMessage.error('串口未连接')
+    }
     return
   }
-  let data = event.detail;
 
   const runtimer = await scriptManager.getRuntimer()
   if (runtimer.DataSenderInterface) {
@@ -273,8 +280,7 @@ const connectToWebsocket = async () => {
 }
 
 onMounted(() => {
-  // @ts-ignore
-  window.addEventListener('serial-send', ((event: CustomEvent) => handleSerialSend(event)) as EventListener)
+  eventCenter.on(EventNames.SERIAL_SEND, handleSerialSend)
   navigator.serial?.getPorts().then(ports => {
     ports.map(authorizedDeviceSerialPort)
   })
@@ -284,8 +290,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // @ts-ignore
-  window.removeEventListener('serial-send', ((event: CustomEvent) => handleSerialSend(event)) as EventListener)
+  eventCenter.off(EventNames.SERIAL_SEND, handleSerialSend)
 })
 
 const isSimulating = ref(false)
@@ -400,6 +405,8 @@ const handleConenctClick = () => {
   }
 }
 
+// defineExpose({scriptManager})
+
 </script>
 
 <template>
@@ -440,6 +447,8 @@ const handleConenctClick = () => {
               <el-option label="WebSocket" value="websocket"></el-option>
               <el-option label="脚本" value="script"></el-option>
               <el-option label="Stlink" value="webstlink"></el-option>
+              <el-option label="DAP" value="dap"></el-option>
+              <el-option label="adb" value="adb"></el-option>
               <el-option label="模拟数据(IMU)" value="mock"></el-option>
             </el-option-group>
           </el-select>

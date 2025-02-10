@@ -42,6 +42,17 @@ interface ChartConfig {
   fields: string[]
 }
 
+interface CanvasConfig {
+  items: {
+    id: number
+    type: string
+    x: number
+    y: number
+    width: number
+    height: number
+  }[]
+}
+
 type ConfigKey = keyof typeof defaultConfigs
 
 const defaultConfigs = {
@@ -88,6 +99,9 @@ const defaultConfigs = {
       fields: ['pitch', 'roll', 'yaw']
     }] as ChartConfig[]
   },
+  canvas: {
+    items: []
+  } as CanvasConfig,
 }
 
 export class ConfigManager {

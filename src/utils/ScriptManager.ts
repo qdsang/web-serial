@@ -1,4 +1,8 @@
 import { SerialHelper } from './SerialHelper'
+import { useFieldStore } from '../store/fieldStore'
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
 
 export interface ScriptItem {
   id: number
@@ -145,17 +149,21 @@ export class ScriptManager {
         uint8ArrayToString: this.serialHelper.uint8ArrayToString.bind(this.serialHelper),
         sendText: (text: string) => {
           const data = this.serialHelper.stringToUint8Array(text)
-          window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
+          eventCenter.emit(EventNames.SERIAL_SEND, data)
         },
         sendHex: (hex: string | Uint8Array) => {
           let data = hex;
           if (typeof hex === 'string') {
             data = this.serialHelper.stringToUint8Array(hex, true)
           }
-          window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
+          eventCenter.emit(EventNames.SERIAL_SEND, data)
         },
         updateDataTable: (data: any) => {
-          window.dispatchEvent(new CustomEvent('data-update', { detail: data }))
+          eventCenter.emit(EventNames.DATA_UPDATE, data)
+        },
+        getDataTables: () => {
+          const fieldStore = useFieldStore()
+          return JSON.parse(JSON.stringify(fieldStore.fields))
         },
         sleep: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
         setTimeout: (fn: Function, ms: number) => {
@@ -186,9 +194,8 @@ return (async function() {
       
     } catch (error) {
       console.error('脚本执行错误:', error)
-      window.dispatchEvent(new CustomEvent('script-error', { 
-        detail: { error: error instanceof Error ? error.message : '未知错误' }
-      }))
+
+      eventCenter.emit(EventNames.SERIAL_ERROR, { error: error instanceof Error ? error.message : '未知错误' })
       this.stopScript()
     }
 

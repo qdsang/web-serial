@@ -2,6 +2,10 @@
 import { SerialHelper } from '../utils/SerialHelper'
 import { ConfigManager } from '../utils/ConfigManager'
 
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 const configManager = ConfigManager.getInstance()
 const sendConfig = configManager.useConfig('send')
 
@@ -21,7 +25,7 @@ const sendData = () => {
       data = serialHelper.appendChecksum(data)
     }
 
-    window.dispatchEvent(new CustomEvent('serial-send', { detail: data }))
+    eventCenter.emit(EventNames.SERIAL_SEND, data)
     
     // 添加到历史记录
     if (content && !sendConfig.value.history.includes(sendConfig.value.content)) {
@@ -32,9 +36,7 @@ const sendData = () => {
     }
   } catch (error) {
     console.error('发送数据时出错:', error)
-    window.dispatchEvent(new CustomEvent('serial-error', { 
-      detail: { message: error instanceof Error ? error.message : '发送数据时出错' }
-    }))
+    eventCenter.emit(EventNames.SERIAL_ERROR, { message: error instanceof Error ? error.message : '发送数据时出错' })
   }
 }
 
@@ -114,6 +116,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
           <el-option :value="'\r\n'" label="CRLF(\r\n)" />
           <el-option :value="'\r'" label="CR(\r)" />
           <el-option :value="'\n'" label="LF(\n)" />
+          <el-option :value="'\n\n'" label="LF2(\n\n)" />
         </el-select>
       </div>
       <el-checkbox v-model="sendConfig.addChecksum" label="校验和" class="me-2" />

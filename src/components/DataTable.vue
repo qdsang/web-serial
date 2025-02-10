@@ -2,11 +2,14 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useFieldStore } from '../store/fieldStore'
 
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 const fieldStore = useFieldStore()
 
 
-const handleDataKey = (event: CustomEvent) => {
-  const data = event.detail
+const handleDataKey = (data: any) => {
   if (typeof data !== 'object' || data === null) return
 
   Object.entries(data).forEach(([key, value]) => {
@@ -42,11 +45,11 @@ const resetData = () => {
 
 onMounted(() => {
   fieldStore.loadFromLocalStorage()
-  window.addEventListener('data-update', handleDataKey as EventListener)
+  eventCenter.on(EventNames.DATA_UPDATE, handleDataKey)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('data-update', handleDataKey as EventListener)
+  eventCenter.off(EventNames.DATA_UPDATE, handleDataKey)
 })
 </script>
 
@@ -198,7 +201,7 @@ onUnmounted(() => {
 }
 
 .table-toolbar {
-  padding: 16px;
+  padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;

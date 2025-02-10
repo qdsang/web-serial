@@ -121,6 +121,16 @@ const handleRenameGroup = () => {
                   </el-radio-group>
                 </div>
                 <div class="setting-row">
+                  <span>添加换行：</span>
+                  <el-select v-model="item.addCRLFType" size="small" style="width: 80px;">
+                    <el-option :value="''" label="无" />
+                    <el-option :value="'\r\n'" label="CRLF(\r\n)" />
+                    <el-option :value="'\r'" label="CR(\r)" />
+                    <el-option :value="'\n'" label="LF(\n)" />
+                    <el-option :value="'\n\n'" label="LF2(\n\n)" />
+                  </el-select>
+                </div>
+                <div class="setting-row">
                   <span>定时发送：</span>
                   <el-tooltip
                     class="box-item"

@@ -16,6 +16,10 @@ import Stats from 'stats.js'
 import particleFire from 'three-particle-fire';
 try { particleFire.install( { THREE: THREE } ); } catch (e) { }
 
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 const container = ref<HTMLDivElement | null>(null)
 const pitch = ref(0)
 const roll = ref(0)
@@ -294,8 +298,7 @@ const handleResize = () => {
   }
 }
 
-const handleImuData = (event: CustomEvent) => {
-  const data = event.detail
+const handleImuData = (data: any) => {
   if (!data || typeof data.pitch !== 'number') return
   
   const { pitch: p, roll: r, yaw: y } = data
@@ -322,16 +325,18 @@ const uploadModel = () => {
 onMounted(() => {
   initScene()
   animate()
+
+  eventCenter.on(EventNames.DATA_UPDATE, handleImuData)
   window.addEventListener('resize', handleResize)
-  window.addEventListener('data-update', handleImuData as EventListener)
 })
 
 onUnmounted(() => {
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId)
   }
+  
+  eventCenter.off(EventNames.DATA_UPDATE, handleImuData)
   window.removeEventListener('resize', handleResize)
-  window.removeEventListener('data-update', handleImuData as EventListener)
   renderer.dispose()
 })
 </script>

@@ -7,6 +7,7 @@ import ChartPanel from './components/ChartPanel.vue'
 import DataTable from './components/DataTable.vue'
 import SerialQuickSend from './components/SerialQuickSend.vue'
 import SerialScripts from './components/SerialScript.vue'
+import CanvasPanel from './components/CanvasPanel.vue'
 import { useDark, useToggle } from '@vueuse/core'
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -81,8 +82,8 @@ handleResize()
     <el-container class="main-container">
       <Splitpanes class="default-theme" @resize="handleSplitResize">
         <Pane :size="layoutConfig.splitPaneSize" class="w75">
-          <el-tabs type="card" class="lv-card lv-tabs" v-model="layoutConfig.leftActiveTab" @tab-click="handleTabChange">
-            <el-tab-pane label="日志" lazy>
+          <el-tabs type="card" class="lv-card lv-tabs" addable v-model="layoutConfig.leftActiveTab" @tab-click="handleTabChange">
+            <el-tab-pane label="命令行">
               <SerialLog />
             </el-tab-pane>
             <el-tab-pane label="可视化" lazy>
@@ -94,7 +95,8 @@ handleResize()
             <el-tab-pane label="数据表">
               <DataTable />
             </el-tab-pane>
-            <el-tab-pane label="工具箱">
+            <el-tab-pane label="画板" lazy>
+              <CanvasPanel />
             </el-tab-pane>
           </el-tabs>
         </Pane>
@@ -124,6 +126,9 @@ handleResize()
   background-color: var(--el-bg-color-overlay);
   padding: 0 20px;
   border-bottom: 1px solid var(--el-border-color-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .header-content {
@@ -136,7 +141,7 @@ handleResize()
 .header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
 }
 
 .header-content h1 {
@@ -149,37 +154,58 @@ handleResize()
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-fill-color: transparent;
+  letter-spacing: -0.5px;
 }
 
 .header-serial-config {
   margin: 0;
+  position: relative;
 }
 
 .header-serial-config :deep(.el-card) {
   background: transparent;
   border: none;
-  color: var(--el-text-color-primary);
+  box-shadow: none;
 }
 
 .header-serial-config :deep(.el-card .el-form) {
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .header-serial-config :deep(.el-form-item__label) {
-  color: var(--el-text-color-primary);
+  color: var(--el-text-color-regular);
+  font-weight: 500;
 }
 
 .header-serial-config :deep(.el-input__wrapper),
 .header-serial-config :deep(.el-select .el-input__wrapper) {
   background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
   box-shadow: none;
+  transition: all 0.2s;
+}
+
+.header-serial-config :deep(.el-input__wrapper:hover),
+.header-serial-config :deep(.el-select .el-input__wrapper:hover) {
+  border-color: var(--el-color-primary);
 }
 
 .header-links {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-links .el-button {
+  border: 1px solid var(--el-border-color);
+  transition: all 0.2s;
+}
+
+.header-links .el-button:hover {
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
 }
 
 .header-links a {
@@ -269,6 +295,9 @@ html.dark .el-button {
   }
   .el-tab-pane {
     height: 100%;
+  }
+  .el-tabs__new-tab {
+    margin-right: 10px;
   }
 }
 

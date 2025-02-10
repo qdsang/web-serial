@@ -8,6 +8,10 @@ import { SearchAddon } from '@xterm/addon-search';
 import { useDark } from '@vueuse/core'
 import 'xterm/css/xterm.css'
 
+import { EventCenter, EventNames } from '../utils/EventCenter'
+
+const eventCenter = EventCenter.getInstance()
+
 const configManager = ConfigManager.getInstance()
 const displayConfig = configManager.useConfig('display')
 const isDark = useDark()
@@ -17,18 +21,21 @@ const serialHelper = SerialHelper.getInstance()
 let logBufferAll: string[] = []
 let logBuffer = new Uint8Array()
 let timeoutId: number | null = null
+let timeoutDelt: number = 0
 let terminal: Terminal | null = null
 let fitAddon: FitAddon | null = null
+const receivedBytes = ref(0)
 
 const clearLog = () => {
   if (terminal) {
     terminal.clear()
   }
   logBufferAll = []
+  receivedBytes.value = 0
 }
 
 const handleTerminalData = (data: string) => {
-  window.dispatchEvent(new CustomEvent('serial-send', { detail: new TextEncoder().encode(data) }))
+  eventCenter.emit(EventNames.SERIAL_SEND, new TextEncoder().encode(data))
 }
 
 const getTerimalTheme = (val: boolean) => {
@@ -64,17 +71,18 @@ const initTerminal = () => {
   const terminalElement = document.getElementById('terminal')
   if (terminalElement) {
     terminal.open(terminalElement)
-    // 显示欢迎信息
+    // 显示欢迎信息 https://patorjk.com/software/taag/#p=display&f=Big&t=Serial%20Tool
     const logo = `
-\x1b[36m   _    _      _      ____            _       _ 
-  | |  | |    | |    / ___|          (_)     | |
-  | |  | | ___| |__ \\___ \\ ___ _ __ _  __ _| |
-  | |/\\| |/ _ \\ '_ \\___) / _ \\ '__| |/ _\` | |
-  \\  /\\  /  __/ |_) |__/ /  __/ |  | | (_| | |
-   \\/  \\/ \\___|_.__/|____/\\___|_|  |_|\\__,_|_|
+\x1b[36m   _____           _       _   _______          _ 
+  / ____|         (_)     | | |__   __|        | |
+ | (___   ___ _ __ _  __ _| |    | | ___   ___ | |
+  \\___ \\ / _ \\ '__| |/ _\` | |    | |/ _ \\ / _ \\| |
+  ____) |  __/ |  | | (_| | |    | | (_) | (_) | |
+ |_____/ \\___|_|  |_|\\__,_|_|    |_|\\___/ \\___/|_|
+
 \x1b[0m
-\x1b[35m=== Web Serial Debug Tool ===\x1b[0m
-\x1b[32m版本: v1.5.0\x1b[0m
+\x1b[35m=== Serial Tool ===\x1b[0m
+\x1b[32m版本: v2.1.0\x1b[0m
 \x1b[0m
 功能特点:
 - 🔌 支持串口和WebUSB设备连接
@@ -108,12 +116,29 @@ const toggleOption = (option: string) => {
 
 const processSerialData = (data: Uint8Array) => {
   logBuffer = new Uint8Array([...logBuffer, ...data])
+  receivedBytes.value += data.length
   
+  if (logOptions.value.timeOut == 0) {
+    processSerialDataHanlde()
+    return
+  }
+
   if (timeoutId) {
     clearTimeout(timeoutId)
   }
+  if (timeoutDelt == 0) {
+    timeoutDelt = Date.now()
+  } else {
+    const delt = Date.now() - timeoutDelt
+    if (delt >= logOptions.value.timeOut) {
+      timeoutDelt = 0
+      processSerialDataHanlde()
+      return
+    }
+  }
 
   timeoutId = window.setTimeout(() => {
+    timeoutDelt = 0
     const message = serialHelper.formatLogMessage(logBuffer, logOptions.value)
     if (terminal) {
       terminal.write(message)
@@ -124,6 +149,18 @@ const processSerialData = (data: Uint8Array) => {
     }
     logBuffer = new Uint8Array()
   }, logOptions.value.timeOut)
+}
+
+const processSerialDataHanlde = () => {
+  const message = serialHelper.formatLogMessage(logBuffer, logOptions.value)
+  if (terminal) {
+    terminal.write(message)
+    if (logOptions.value.autoScroll) {
+      terminal.scrollToBottom()
+    }
+    logBufferAll.push(message)
+  }
+  logBuffer = new Uint8Array()
 }
 
 watch(isDark, (newValue) => {
@@ -138,19 +175,25 @@ const handleResize = () => {
   }, 120)
 }
 
+const termWriteHandle = (data: Uint8Array) => {
+  if (terminal) {
+    let str = serialHelper.uint8ArrayToString(data)
+    // console.log('termWriteHandle', str, str.length)
+    terminal.write(str)
+  }
+}
+
 onMounted(() => {
   initTerminal()
 
-  window.addEventListener('serial-data', ((event: CustomEvent) => {
-    processSerialData(event.detail)
-  }) as EventListener)
+  eventCenter.on(EventNames.SERIAL_DATA, processSerialData)
+  eventCenter.on(EventNames.TERM_WRITE, termWriteHandle)
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('serial-data', ((event: CustomEvent) => {
-    processSerialData(event.detail)
-  }) as EventListener)
+  eventCenter.off(EventNames.SERIAL_DATA, processSerialData)
+  eventCenter.off(EventNames.TERM_WRITE, termWriteHandle)
   window.removeEventListener('resize', handleResize)
   
   if (timeoutId) {
@@ -265,6 +308,9 @@ const exportLog = () => {
         </el-input-number>
       </el-tooltip>
 
+      <div class="received-bytes">
+        <span>接收: {{ receivedBytes }} 字节</span>
+      </div>
     </div>
 
     <div class="terminal-container">
@@ -288,7 +334,7 @@ const exportLog = () => {
 .controls {
   display: flex;
   align-items: center;
-  padding: 10px;
+  padding: 12px;
 }
 
 .terminal-container {
@@ -302,5 +348,11 @@ const exportLog = () => {
 
 .me-2 {
   margin-right: 8px;
+}
+
+.received-bytes {
+  margin-left: 16px;
+  color: var(--el-text-color-regular);
+  font-size: 14px;
 }
 </style>
