@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { ConfigManager } from '../utils/ConfigManager'
 import ChartPanel from './ChartPanel.vue'
 import DataTable from './DataTable.vue'
 import Chart3D from './Chart3D.vue'
 import { useDark } from '@vueuse/core'
-import { ElMessage } from 'element-plus'
+// @ts-ignore
 import VueDraggableResizable from 'vue-draggable-resizable'
 import 'vue-draggable-resizable/style.css'
 
@@ -19,7 +19,6 @@ interface CanvasItem {
   y: number
   width: number
   height: number
-  component: any
 }
 
 const items = ref<CanvasItem[]>(canvasConfig.value?.items || [])
@@ -29,7 +28,7 @@ const componentMap = {
   'chart': ChartPanel,
   'table': DataTable,
   '3d': Chart3D
-}
+} as Record<string, any>
 
 const addComponent = (type: string) => {
   const newItem: CanvasItem = {
@@ -38,8 +37,7 @@ const addComponent = (type: string) => {
     x: 0,
     y: 0,
     width: 400,
-    height: 300,
-    component: componentMap[type]
+    height: 300
   }
   items.value.push(newItem)
   saveLayout()
@@ -89,9 +87,9 @@ const saveLayout = () => {
   <div class="canvas-panel">
     <div class="toolbar">
       <el-button-group class="tool-group">
-        <el-button type="primary" @click="addComponent('chart')">添加图表</el-button>
-        <el-button type="primary" @click="addComponent('table')">添加数据表</el-button>
-        <el-button type="primary" @click="addComponent('3d')">添加3D视图</el-button>
+        <el-button type="primary" size="small" @click="addComponent('chart')">添加图表</el-button>
+        <el-button type="primary" size="small" @click="addComponent('table')">添加数据表</el-button>
+        <el-button type="primary" size="small" @click="addComponent('3d')">添加3D视图</el-button>
       </el-button-group>
     </div>
     <div class="canvas-container" :class="{ 'dark': isDark }">
@@ -109,10 +107,10 @@ const saveLayout = () => {
         :snap="true"
         :snap-tolerance="gridSize"
         class="canvas-item"
-        @resizing="(x, y, width, height) => onResize(x, y, width, height, item.id)"
-        @dragging="(x, y) => onDrag(x, y, item.id)"
+        @resizing="(x: number, y: number, width: number, height: number) => onResize(x, y, width, height, item.id)"
+        @dragging="(x: number, y: number) => onDrag(x, y, item.id)"
       >
-        <component :is="item.component" />
+        <component :is="componentMap[item.type]" />
         <el-button
           class="remove-btn"
           type="danger"

@@ -5,6 +5,12 @@ import { ConfigManager } from '../utils/ConfigManager'
 import { ScriptManager } from '../utils/ScriptManager'
 import { EventCenter, EventNames } from '../utils/EventCenter'
 
+import { authorizedDevices, type Device } from './device/device'
+import * as DeviceSerialPort from './device/serialport'
+import * as DeviceMockIMU from './device/mock_imu'
+import * as DeviceWebUSB from './device/webusb'
+import * as DeviceBluetooth from './device/bluetooth'
+
 const configManager = ConfigManager.getInstance()
 const serialConfig = configManager.useConfig('serial')
 
@@ -12,26 +18,25 @@ const scriptManager = ScriptManager.getInstance()
 
 const eventCenter = EventCenter.getInstance()
 
-interface Device {
-  id: string
-  title: string
-  type: string
-  port: SerialPort | USBDevice | BluetoothDevice
-}
-
-const serialPort = ref<SerialPort | null>(null)
 const serialWriter = ref<WritableStreamDefaultWriter | null>(null)
 const serialReader = ref<ReadableStreamDefaultReader | null>(null)
 const isConnected = ref(false)
-const authorizedDevices = ref<Device[]>([])
-const selectedDevice = ref('')
+const selectedDeviceId = ref('')
 const baudRates = [921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200]
 
 const handleConfigChange = async () => {
-  if (isConnected.value && serialPort.value) {
+  if (isConnected.value) {
     try {
       await disconnectSerial()
-      await connectToPort(serialPort.value)
+      DeviceSerialPort.disconnect()
+    }catch(error) {
+
+    }
+    try {
+      const device = authorizedDevices.value.find(d => d.id === selectedDeviceId.value)
+      if (device) {
+        await DeviceSerialPort.connectDevice(device)
+      }
       ElMessage.success('串口参数已更新')
     } catch (error) {
       ElMessage.error('更新串口参数失败：' + error)
@@ -39,55 +44,6 @@ const handleConfigChange = async () => {
   }
 }
 watch(serialConfig, handleConfigChange, { deep: true })
-
-const authorizedDeviceSerialPort = (port: SerialPort) => {
-  const id = 'serialport_' + (port.getInfo().usbProductId?.toString() || '')
-
-  const device = authorizedDevices.value.find(d => d.id === id)
-  if (device) {
-    return device
-  }
-  const device2 = {
-    id: id,
-    title: getDeviceTitle(port),
-    type: 'serialport',
-    port: port
-  }
-  authorizedDevices.value.push(device2)
-  return device2
-}
-
-const authorizedDeviceUSB = (port: USBDevice) => {
-  const id ='usb_' + port.serialNumber
-  const device = authorizedDevices.value.find(d => d.id === id)
-  if (device) {
-    return device
-  }
-  const device2 = {
-    id: id,
-    title: getWebUSBDeviceTitle(port),
-    type:'usb',
-    port: port
-  }
-  authorizedDevices.value.push(device2)
-  return device2
-}
-
-const authorizedDeviceBluetooth = (port: BluetoothDevice) => {
-  const id ='bluetooth_' + port.id
-  const device = authorizedDevices.value.find(d => d.id === id)
-  if (device) {
-    return device
-  }
-  const device2 = {
-    id: id,
-    title: getBluetoothDeviceTitle(port),
-    type:'bluetooth',
-    port: port
-  }
-  authorizedDevices.value.push(device2)
-  return device2
-}
 
 const DataEmit = async (data: Uint8Array) => {
   const runtimer = await scriptManager.getRuntimer()
@@ -97,106 +53,73 @@ const DataEmit = async (data: Uint8Array) => {
   eventCenter.emit(EventNames.SERIAL_DATA, data)
 }
 
-const connectSerial = async () => {
-  try {
-    const port = await navigator.serial.requestPort()
-    await connectToPort(port)
-  } catch (error: any) {
-    if (error.message != "Failed to execute 'requestPort' on 'Serial': No port selected by the user.") {
-      ElMessage.error('串口连接失败：' + error)
-    }
-    console.error(error);
-    selectedDevice.value = ''
-  }
-}
 
-const connectWebUSB = async () => {
-  try {
-    const device = await navigator.usb.requestDevice({
-      filters: [] // 允许所有设备
-    })
-    authorizedDeviceUSB(device)
-    ElMessage.success('WebUSB设备已授权')
-  } catch (error) {
-    ElMessage.error('WebUSB设备授权失败：' + error)
-    console.error(error);
-    selectedDevice.value = ''
-  }
-}
-
-const connectBluetooth = async () => {
-  try {
-    const device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true
-    })
-    authorizedDeviceBluetooth(device)
-    ElMessage.success('蓝牙设备已授权')
-  } catch (error) {
-    ElMessage.error('蓝牙设备授权失败：' + error)
-    console.error(error);
-    selectedDevice.value = ''
-  }
-}
-
-const handleDeviceAuthorize = () => {
-  stopSimulation()
-  switch (selectedDevice.value) {
+const handleDeviceAuthorize = async () => {
+  let device: Device | null = null
+  switch (selectedDeviceId.value) {
     case 'authorizedSerial':
-      connectSerial()
+      device = await DeviceSerialPort.request()
       break
     case 'authorizedUSB':
-      connectWebUSB()
+      device = await DeviceWebUSB.request()
       break
     case 'authorizedBluetooth':
-      connectBluetooth()
+      device = await DeviceBluetooth.request()
       break
     case 'websocket':
       break
     case 'webstlink':
     case 'script':
+    case 'dap':
+    case 'adb':
       ElMessage.warning('该设备类型开发中')
-      selectedDevice.value = ''
-      break
-    case 'mock':
-      startSimulation()
+      selectedDeviceId.value = ''
       break
     default:
+      device = authorizedDevices.value.find(p => p.id === selectedDeviceId.value) as Device | null
+  }
 
-      const device = authorizedDevices.value.find(p => p.id === selectedDevice.value)
-      if (device) {
-        if (device.type === 'serialport') {
-          connectToPort(device.port as SerialPort)
-          return
-        } else if (device.type ==='usb') {
-          // 处理USB设备连接
-          return
-        } else if (device.type ==='bluetooth') {
-          // 处理蓝牙设备连接
-          return
-        }
-      }
+  if (device) {
+    connectDevice(device)
+  } else {
+    selectedDeviceId.value = ''
   }
 }
 
-const connectToPort = async (port: SerialPort) => {
+const connectDevice = async (device: Device) => {
+  const device2 = authorizedDevices.value.find(p => p.id === device.id)
+  if (!device2) {
+    authorizedDevices.value.push(device)
+  }
+  let port
   try {
-    const device = authorizedDeviceSerialPort(port)
-    await port.open(serialConfig.value)
-    serialPort.value = port
-    serialWriter.value = port.writable.getWriter()
-    serialReader.value = port.readable.getReader()
-    isConnected.value = true
-    ElMessage.success('串口连接成功')
-    startReading()
-    selectedDevice.value = device.id
+    if (device.type === 'serialport') {
+      port = await DeviceSerialPort.connectDevice(device)
+    } else if (device.type ==='mock') {
+      port = await DeviceMockIMU.connectDevice(device)
+    } else if (device.type ==='usb') {
+      port = await DeviceWebUSB.connectDevice(device)
+    } else if (device.type ==='bluetooth') {
+      port = await DeviceBluetooth.connectDevice(device)
+    }
   } catch (error) {
     ElMessage.error('串口连接失败：' + error)
     console.log(error)
   }
+
+  if (port) {
+    serialWriter.value = port.writer
+    serialReader.value = port.reader
+    isConnected.value = true
+    ElMessage.success('串口连接成功')
+    startReading()
+    selectedDeviceId.value = device.id
+  } else {
+    selectedDeviceId.value = ''
+  }
 }
 
 const disconnectSerial = async () => {
-  stopSimulation()
   try {
     if (serialReader.value) {
       await serialReader.value.cancel()
@@ -209,17 +132,16 @@ const disconnectSerial = async () => {
   } catch (error) {
     console.log(error)
   }
+  isConnected.value = false
+  selectedDeviceId.value = ''
   try {
-    if (serialPort.value) {
-      await serialPort.value.close()
-    }
+    await DeviceSerialPort.disconnect()
+    await DeviceMockIMU.disconnect()
     ElMessage.success('设备已断开')
   } catch (error) {
     ElMessage.error('断开设备失败：' + error)
     console.log(error)
   }
-  isConnected.value = false
-  selectedDevice.value = ''
 }
 
 const startReading = async () => {
@@ -243,7 +165,7 @@ const handleSerialSend = async (data: Uint8Array) => {
     if (data.length == 1 && data[0] == 13) {
       eventCenter.emit(EventNames.TERM_WRITE, data)
     } else {
-      ElMessage.error('串口未连接')
+      ElMessage.error('设备未连接')
     }
     return
   }
@@ -255,7 +177,9 @@ const handleSerialSend = async (data: Uint8Array) => {
 
   try {
     await serialWriter.value.write(data)
+    ElMessage.success({ message: '发送成功', grouping: true })
   } catch (error) {
+    console.log(error)
     ElMessage.error('发送数据失败：' + error)
   }
 }
@@ -272,136 +196,26 @@ const handleWsConfigChange = (value: string) => {
     wsConfig.value.history.push(value)
     localStorage.setItem('config.wsConfig', JSON.stringify(wsConfig.value))
   }
-  connectToWebsocket()
-}
-
-const connectToWebsocket = async () => {
-  
 }
 
 onMounted(() => {
   eventCenter.on(EventNames.SERIAL_SEND, handleSerialSend)
-  navigator.serial?.getPorts().then(ports => {
-    ports.map(authorizedDeviceSerialPort)
-  })
-  navigator.usb?.getDevices().then(devices => {
-    devices.map(authorizedDeviceUSB)
-  })
+  DeviceSerialPort.init()
+  DeviceWebUSB.init()
 })
 
 onUnmounted(() => {
   eventCenter.off(EventNames.SERIAL_SEND, handleSerialSend)
 })
 
-const isSimulating = ref(false)
-let simulationTimer: number | null = null
-
-const startSimulation = () => {
-  isSimulating.value = true
-  isConnected.value = true
-  let dataBuffer: Uint8Array[] = []
-
-  const { writable, readable } = new TransformStream({
-    transform(chunk, controller) {
-      dataBuffer.push(chunk)
-      controller.enqueue(chunk)
-    }
-  })
-
-  let pitch = 0.0, roll = 0.0, yaw = 0.0
-  simulationTimer = window.setInterval(() => {
-    // 模拟数据
-    pitch += Math.random()*0.4 - 0.2;
-    roll += Math.random()*0.4 - 0.1;
-    yaw += Math.random()*0.4 - 0;
-
-    let text = `pitch:${pitch.toFixed(2)},roll:${roll.toFixed(2)},yaw:${yaw.toFixed(2)}\n`
-    const data = new TextEncoder().encode(text)
-    DataEmit(data)
-  }, 50)
-
-  serialWriter.value = writable.getWriter()
-  serialReader.value = readable.getReader()
-  startReading()
-}
-
-const stopSimulation = () => {
-  if (simulationTimer) {
-    clearInterval(simulationTimer)
-    simulationTimer = null
-    isConnected.value = false
-  }
-}
-
-const KNOWN_DEVICES = [
-  // Arduino 系列
-  { name: 'Arduino UNO', vendorId: '2341', productId: '0043' },
-  { name: 'Arduino Mega', vendorId: '2341', productId: '0010' },
-  { name: 'Arduino Nano', vendorId: '0403', productId: '6001' },
-  { name: 'ATmega32U4', vendorId: '2341', productId: '8036' },
-  
-  // Silicon Labs CP210x 系列
-  { name: 'CP2102/CP2102N', vendorId: '10c4', productId: 'ea60' },
-  
-  // FTDI 系列
-  { name: 'FT2232H', vendorId: '0403', productId: '6010' },
-  { name: 'FTDI Basic', vendorId: '0403', productId: '6001' },
-  
-  // WCH CH340 系列
-  { name: 'CH340', vendorId: '1a86', productId: '7523' },
-  { name: 'CH9102', vendorId: '1a86', productId: '55d4' },
-  
-  // Prolific 系列
-  { name: 'PL2303', vendorId: '067b', productId: '2303' },
-  { name: 'PL2303HX', vendorId: '067b', productId: '2303' },
-  
-  // Espressif 系列
-  { name: 'ESP USB_SERIAL_JTAG', vendorId: '303a', productId: '1001' },
-  { name: 'ESP USB Bridge', vendorId: '303a', productId: '1002' },
-  { name: 'ESP32-S2 USB CDC', vendorId: '303a', productId: '0002' },
-  { name: 'ESP32-S3 USB CDC', vendorId: '303a', productId: '0009' },
-  
-  // QinHeng Electronics
-  { name: 'CH9102F', vendorId: '1a86', productId: '55d4' },
-  { name: 'CH340G', vendorId: '1a86', productId: '7523' },
-  
-  // STMicroelectronics
-  { name: 'STM32 Virtual COM Port', vendorId: '0483', productId: '5740' },
-  { name: 'STM32 USB CDC', vendorId: '0483', productId: '5740' }
-]
-
-const getDeviceTitle = (port: SerialPort) => {
-  if (!port.getInfo().usbProductId) return '串口设备'
-  
-  const vendorId = (port.getInfo().usbVendorId || 0).toString(16).padStart(4, '0')
-  const productId = (port.getInfo().usbProductId || 0).toString(16).padStart(4, '0')
-  
-  const device = KNOWN_DEVICES.find(
-    d => d.vendorId.toLowerCase() === vendorId.toLowerCase() && 
-         d.productId.toLowerCase() === productId.toLowerCase()
-  )
-  
-  return device ? 
-    `${device.name} (VID:${vendorId} PID:${productId})` : 
-    `未知设备 (VID:${vendorId} PID:${productId})`
-}
-
-const getWebUSBDeviceTitle = (device: any) => {
-  return '未知设备' + device
-  // return `${device.productName || '未知设备'} (${device.vendorId}:${device.productId})`
-}
-
-const getBluetoothDeviceTitle = (device: any) => {
-  return '未知设备' + device
-  // return `${device.name || '未知设备'} (${device.id})`
-}
-
 const handleConenctClick = () => {
   if (isConnected.value) {
     disconnectSerial()
   } else {
-    // @ts-ignore
-    connectToPort(serialPort.value)
+    const device = authorizedDevices.value.find(d => d.id === selectedDeviceId.value)
+    if (device) {
+      connectDevice(device)
+    }
   }
 }
 
@@ -414,7 +228,7 @@ const handleConenctClick = () => {
     <div class="config-container">
       <div class="port-section">
         <div class="port-list">
-          <el-select v-model="selectedDevice" @change="handleDeviceAuthorize" placeholder="选择设备" size="small">
+          <el-select v-model="selectedDeviceId" @change="handleDeviceAuthorize" placeholder="选择设备" size="small">
             <el-option label="选择设备" value=""></el-option>
             <el-option-group label="串口设备">
               <el-option label="授权串口设备" value="authorizedSerial"></el-option>
@@ -459,7 +273,7 @@ const handleConenctClick = () => {
           </el-button>
         </el-button-group>
       </div>
-      <el-form v-if="selectedDevice == 'websocket'" :model="wsConfig" :inline="true" size="small" class="config-section">
+      <el-form v-if="selectedDeviceId == 'websocket'" :model="wsConfig" :inline="true" size="small" class="config-section">
         <el-form-item label="ws">
           <el-select v-model="wsConfig.url" filterable allow-create @change="handleWsConfigChange" style="width: 300px;">
             <el-option v-for="url in wsConfig.history" :key="url" :label="url" :value="url" />

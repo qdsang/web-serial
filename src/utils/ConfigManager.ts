@@ -71,7 +71,7 @@ const defaultConfigs = {
     showText: true,
     showNewline: true,
     autoScroll: false,
-    timeOut: 20
+    timeOut: 5
   } as DisplayConfig,
 
   send: {

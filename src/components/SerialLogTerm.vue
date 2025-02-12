@@ -24,6 +24,7 @@ let timeoutId: number | null = null
 let timeoutDelt: number = 0
 let terminal: Terminal | null = null
 let fitAddon: FitAddon | null = null
+// let terminalWriteBuffer = new Uint8Array()
 const receivedBytes = ref(0)
 
 const clearLog = () => {
@@ -139,25 +140,28 @@ const processSerialData = (data: Uint8Array) => {
 
   timeoutId = window.setTimeout(() => {
     timeoutDelt = 0
-    const message = serialHelper.formatLogMessage(logBuffer, logOptions.value)
-    if (terminal) {
-      terminal.write(message)
-      if (logOptions.value.autoScroll) {
-        terminal.scrollToBottom()
-      }
-      logBufferAll.push(message)
-    }
-    logBuffer = new Uint8Array()
+    processSerialDataHanlde()
   }, logOptions.value.timeOut)
 }
 
 const processSerialDataHanlde = () => {
   const message = serialHelper.formatLogMessage(logBuffer, logOptions.value)
   if (terminal) {
-    terminal.write(message)
-    if (logOptions.value.autoScroll) {
-      terminal.scrollToBottom()
-    }
+    // terminalWriteBuffer = new Uint8Array([...terminalWriteBuffer, ...message])
+    requestAnimationFrame(() => {
+      if (terminal) {
+        // let buff = terminalWriteBuffer
+        // terminalWriteBuffer = new Uint8Array()
+        terminal.write(message)
+        if (logOptions.value.autoScroll) {
+          terminal.scrollToBottom()
+        }
+      }
+    })
+    // terminal.write(message)
+    // if (logOptions.value.autoScroll) {
+    //   terminal.scrollToBottom()
+    // }
     logBufferAll.push(message)
   }
   logBuffer = new Uint8Array()
