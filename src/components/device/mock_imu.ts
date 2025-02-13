@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { authorizedDevices, type Device } from './device'
+import { TimerManager } from '../../utils/TimerManager'
 
 export const getDeviceTitle = () => {
     return 'mock'
@@ -20,7 +21,8 @@ export const makeDevice = (port: any) => {
 authorizedDevices.value.push(makeDevice(null))
 
 const isSimulating = ref(false)
-let simulationTimer: number | null = null
+const timerManager = TimerManager.getInstance()
+const SIMULATION_TIMER_ID = 'mock_imu_simulation'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -39,12 +41,10 @@ const startSimulation = async () => {
   let reader = readable.getReader()
 
   let pitch = 0.0, roll = 0.0, yaw = 0.0
-  if (simulationTimer) {
-    clearInterval(simulationTimer)
-  }
-
-  await sleep(50 - (Date.now() % 50))
-  simulationTimer = window.setInterval(() => {
+  await sleep(1000 - (Date.now() % 1000))
+  // console.log('ts', Date.now())
+  timerManager.startTimer(SIMULATION_TIMER_ID, () => {
+    // console.log('ts2', Date.now())
     // 模拟数据
     pitch += Math.random()*0.4 - 0.2;
     roll += Math.random()*0.4 - 0.1;
@@ -60,10 +60,8 @@ const startSimulation = async () => {
 }
 
 const stopSimulation = () => {
-  if (simulationTimer) {
-    clearInterval(simulationTimer)
-    simulationTimer = null
-  }
+  timerManager.stopTimer(SIMULATION_TIMER_ID)
+  isSimulating.value = false
 }
 
 export const request = async () => {

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'web-serial-debug-cache-v1';
+const CACHE_NAME = 'web-serial-debug-cache-v2';
 const urlsToCache = [
   './',
   './index.html',

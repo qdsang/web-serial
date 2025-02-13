@@ -92,7 +92,7 @@ handleResize()
             <el-tab-pane label="姿态" lazy>
               <Chart3D />
             </el-tab-pane>
-            <el-tab-pane label="数据表">
+            <el-tab-pane label="数据表" lazy>
               <DataTable />
             </el-tab-pane>
             <el-tab-pane label="画板" lazy>
@@ -232,7 +232,6 @@ handleResize()
 }
 .lv-card :deep(.el-tab-pane) {
   height: 100%;
-  overflow: auto;
 }
 
 :deep(.splitpanes__splitter) {

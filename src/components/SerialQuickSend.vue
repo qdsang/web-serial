@@ -169,6 +169,7 @@ const handleRenameGroup = () => {
 <style scoped>
 .quick-send {
   margin: 10px 10px;
+  min-width: 200px;
 }
 
 .quick-send-actions {
@@ -228,6 +229,7 @@ const handleRenameGroup = () => {
 .item-row {
   display: flex;
   align-items: center;
+  white-space: nowrap;
   gap: 8px;
 }
 

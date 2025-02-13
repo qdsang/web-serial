@@ -107,11 +107,11 @@ export class ScriptManager {
     this.currentScript = script
   }
 
-  public addScript(): ScriptItem {
+  public addScript(title: string = '新脚本', code: string = demo1): ScriptItem {
     const newScript: ScriptItem = {
       id: Date.now(),
-      name: '新建脚本',
-      code: demo1,
+      name: title,
+      code: code,
       isRunning: false
     }
     this.scripts.push(newScript)
@@ -231,7 +231,7 @@ return (async function() {
       }
     }
     if (this.scripts.length === 0) {
-      this.addScript()
+      this.addScript('数据处理Demo（key:val,key:val）', demo1)
     }
     this.scripts.map((script) => {
       script.isRunning = false

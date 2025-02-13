@@ -70,7 +70,7 @@ export const useQuickSendStore = defineStore('quickSend', () => {
       name: '新建项目',
       content: '',
       type: 'text',
-      addCRLFType: ''
+      addCRLFType: '\\n'
     })
   }
 
@@ -195,7 +195,7 @@ export const useQuickSendStore = defineStore('quickSend', () => {
           {
               id: 4,
               name: '16进制测试',
-              content: '48 45 4C 4C 4F',
+              content: 'AA BB CC 11 22',
               type: 'hex',
               addCRLFType: ''
           }

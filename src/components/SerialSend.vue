@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { SerialHelper } from '../utils/SerialHelper'
 import { ConfigManager } from '../utils/ConfigManager'
+import { ElMessage } from 'element-plus'
 
 import { EventCenter, EventNames } from '../utils/EventCenter'
 
@@ -24,7 +25,7 @@ const sendData = () => {
     if (sendConfig.value.addChecksum) {
       data = serialHelper.appendChecksum(data)
     }
-
+    // console.log('发送数据:', data, serialHelper.uint8ArrayToString(data))
     eventCenter.emit(EventNames.SERIAL_SEND, data)
     
     // 添加到历史记录
@@ -36,13 +37,24 @@ const sendData = () => {
     }
   } catch (error) {
     console.error('发送数据时出错:', error)
+    ElMessage.error('发送数据时出错' + error)
     eventCenter.emit(EventNames.SERIAL_ERROR, { message: error instanceof Error ? error.message : '发送数据时出错' })
+    return false
   }
+  return true
 }
 
 const toggleAutoSend = () => {
   if (sendConfig.value.autoSend) {
-    autoSendTimer = window.setInterval(sendData, sendConfig.value.autoSendInterval)
+    autoSendTimer = window.setInterval(() => {
+      if (!sendData()) {
+        if (autoSendTimer) {
+          clearInterval(autoSendTimer)
+          autoSendTimer = null
+        }
+        sendConfig.value.autoSend = false
+      }
+    }, sendConfig.value.autoSendInterval)
   } else if (autoSendTimer) {
     clearInterval(autoSendTimer)
     autoSendTimer = null
@@ -112,7 +124,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       <el-switch v-model="sendConfig.isHexSend" active-text="HEX" inactive-text="TEXT" class="me-2" />
       <div class="me-2" style="display: inline-block;">
         <el-checkbox v-model="sendConfig.addCRLF" label="" class="" style="vertical-align: middle;" />
-        <el-select v-model="sendConfig.addCRLFType" size="small" style="width: 80px;">
+        <el-select v-model="sendConfig.addCRLFType" size="small" style="width: 80px;" @change="sendConfig.addCRLF = true">
           <el-option :value="'\r\n'" label="CRLF(\r\n)" />
           <el-option :value="'\r'" label="CR(\r)" />
           <el-option :value="'\n'" label="LF(\n)" />
@@ -121,7 +133,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       </div>
       <el-checkbox v-model="sendConfig.addChecksum" label="校验和" class="me-2" />
       <el-checkbox v-model="sendConfig.autoSend" @change="toggleAutoSend" label="自动发送" class="me-2" />
-      <el-input-number v-model="sendConfig.autoSendInterval" :min="100" :max="10000" :step="100" @change="handleIntervalChange" size="small" class="me-2" title="自动发送时间间隔">
+      <el-input-number v-model="sendConfig.autoSendInterval" :step="100" @change="handleIntervalChange" size="small" class="me-2" title="自动发送时间间隔">
         <template #suffix>
           <span>ms</span>
         </template>
@@ -133,7 +145,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
         v-model="sendConfig.content"
         type="textarea"
         :rows="5"
-        :placeholder="sendConfig.isHexSend ? '请输入HEX格式数据，如：49 54 4C 44 47' : '请输入要发送的文本'"
+        :placeholder="sendConfig.isHexSend ? '请输入HEX格式数据，如：AA BB CC 11 22' : '请输入要发送的文本'"
         @keydown="handleKeyDown"
       />
     </div>

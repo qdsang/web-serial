@@ -99,6 +99,8 @@ const saveLayout = () => {
         :key="item.id"
         :x="item.x"
         :y="item.y"
+        :w="item.width"
+        :h="item.height"
         :width="item.width"
         :height="item.height"
         :draggable="true"

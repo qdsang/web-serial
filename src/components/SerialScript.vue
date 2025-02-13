@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
-import { defaultKeymap } from '@codemirror/commands'
+import { defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark, oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
@@ -69,6 +69,7 @@ const createEditor = () => {
       doc: currentScript.value.code,
       extensions: [
         keymap.of(defaultKeymap),
+        keymap.of([indentWithTab]),
         syntaxHighlighting(isDark.value ? oneDarkHighlightStyle : defaultHighlightStyle),
         javascript(),
         isDark.value ? oneDark : [],
@@ -166,6 +167,7 @@ watch(scripts, () => {
 <style scoped>
 .serial-script {
   margin: 10px;
+  min-width: 300px;
 }
 
 .script-select {

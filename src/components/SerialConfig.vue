@@ -28,16 +28,16 @@ const handleConfigChange = async () => {
   if (isConnected.value) {
     try {
       await disconnectSerial()
-      DeviceSerialPort.disconnect()
+      // DeviceSerialPort.disconnect()
     }catch(error) {
 
     }
     try {
       const device = authorizedDevices.value.find(d => d.id === selectedDeviceId.value)
       if (device) {
-        await DeviceSerialPort.connectDevice(device)
+        await connectDevice(device)
       }
-      ElMessage.success('串口参数已更新')
+      // ElMessage.success('串口参数已更新')
     } catch (error) {
       ElMessage.error('更新串口参数失败：' + error)
     }
@@ -133,7 +133,8 @@ const disconnectSerial = async () => {
     console.log(error)
   }
   isConnected.value = false
-  selectedDeviceId.value = ''
+  // selectedDeviceId.value = ''
+
   try {
     await DeviceSerialPort.disconnect()
     await DeviceMockIMU.disconnect()
@@ -177,7 +178,7 @@ const handleSerialSend = async (data: Uint8Array) => {
 
   try {
     await serialWriter.value.write(data)
-    ElMessage.success({ message: '发送成功', grouping: true })
+    ElMessage.success({ message: '发送成功', grouping: true, duration: 1800, showClose: true })
   } catch (error) {
     console.log(error)
     ElMessage.error('发送数据失败：' + error)

@@ -1,6 +1,6 @@
 # [Web Serial Debugger](https://qdsang.github.io/web-serial-debug/)
 
-一个基于 Web Serial 的串口调试工具。 [https://qdsang.github.io/web-serial-debug/](https://qdsang.github.io/web-serial-debug/)
+基于 Web 的串口调试工具。 [https://qdsang.github.io/web-serial-debug/](https://qdsang.github.io/web-serial-debug/)
 
 ## Demo
 
