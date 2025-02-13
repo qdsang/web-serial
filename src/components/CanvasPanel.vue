@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { ConfigManager } from '../utils/ConfigManager'
 import ChartPanel from './ChartPanel.vue'
 import DataTable from './DataTable.vue'
-import Chart3D from './Chart3D.vue'
+import ChartIMU from './ChartIMU.vue'
 import { useDark } from '@vueuse/core'
 // @ts-ignore
 import VueDraggableResizable from 'vue-draggable-resizable'
@@ -27,7 +27,7 @@ const isDark = useDark()
 const componentMap = {
   'chart': ChartPanel,
   'table': DataTable,
-  '3d': Chart3D
+  '3d': ChartIMU
 } as Record<string, any>
 
 const addComponent = (type: string) => {

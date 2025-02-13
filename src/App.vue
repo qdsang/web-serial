@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import SerialConfig from './components/SerialConfig.vue'
 import SerialLog from './components/SerialLog.vue'
-import Chart3D from './components/Chart3D.vue'
+import ChartRocket from './components/ChartRocket.vue'
+import ChartIMU from './components/ChartIMU.vue'
 import ChartPanel from './components/ChartPanel.vue'
 import DataTable from './components/DataTable.vue'
 import SerialQuickSend from './components/SerialQuickSend.vue'
@@ -90,7 +91,10 @@ handleResize()
               <ChartPanel />
             </el-tab-pane>
             <el-tab-pane label="姿态" lazy>
-              <Chart3D />
+              <ChartIMU />
+            </el-tab-pane>
+            <el-tab-pane label="火箭" lazy>
+              <ChartRocket />
             </el-tab-pane>
             <el-tab-pane label="数据表" lazy>
               <DataTable />

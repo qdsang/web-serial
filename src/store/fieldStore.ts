@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useLocalStorage } from '@vueuse/core'
 
 interface DataField {
   id: number
@@ -33,11 +34,37 @@ interface ColumnVisibility {
   updateCount: boolean
 }
 
+const createFieldItem = (id: number, key: string, value: any, dataType?: 'number' | 'string' | 'boolean' | 'object'): DataField => {
+  return {
+    id: id,
+    key,
+    name: key,
+    keyAddr: 0,
+    keySize: 0,
+    dataType: dataType || 'number',
+    description: '',
+    value,
+    avg: typeof value === 'number' ? value : null,
+    avgSum: typeof value === 'number' ? value : null,
+    min: typeof value === 'number' ? value : null,
+    max: typeof value === 'number' ? value : null,
+    lastUpdate: Date.now(),
+    updateCount: 1,
+    isEditing: false
+  }
+}
+
+const initDefaultFields = [
+  createFieldItem(1, 'pitch', 0, 'number'),
+  createFieldItem(1, 'roll', 0, 'number'),
+  createFieldItem(1, 'yaw', 0, 'number'),
+] as DataField[]
+
 export const useFieldStore = defineStore('field', {
   state: () => ({
-    fields: [] as DataField[],
-    nextId: 1,
-    columnVisibility: {
+    fields: useLocalStorage('config.fields', initDefaultFields),
+    nextId: useLocalStorage('config.nextId', 1),
+    columnVisibility: useLocalStorage('config.columnVisibility', {
       key: true,
       name: false,
       keyAddr: false,
@@ -50,37 +77,13 @@ export const useFieldStore = defineStore('field', {
       max: false,
       lastUpdate: true,
       updateCount: true
-    } as ColumnVisibility
+    } as ColumnVisibility)
   }),
   actions: {
     createField(key: string, value: any, dataType?: 'number' | 'string' | 'boolean' | 'object'): DataField {
-      const field = {
-        id: this.nextId++,
-        key,
-        name: key,
-        keyAddr: 0,
-        keySize: 0,
-        dataType: dataType || 'number',
-        description: '',
-        value,
-        avg: typeof value === 'number' ? value : null,
-        avgSum: typeof value === 'number' ? value : null,
-        min: typeof value === 'number' ? value : null,
-        max: typeof value === 'number' ? value : null,
-        lastUpdate: Date.now(),
-        updateCount: 1,
-        isEditing: false
-      }
+      const field = createFieldItem(this.nextId++, key, value, dataType)
       this.fields.push(field)
-      this.saveToLocalStorage()
       return field
-    },
-    initDefaultFields() {
-      if (this.fields.length === 0) {
-        this.createField('pitch', 0, 'number')
-        this.createField('roll', 0, 'number')
-        this.createField('yaw', 0, 'number')
-      }
     },
     updateField(field: DataField, value: any) {
       field.value = value
@@ -97,37 +100,18 @@ export const useFieldStore = defineStore('field', {
         if (field.min === null || value < field.min) field.min = value
         if (field.max === null || value > field.max) field.max = value
       }
-      this.saveToLocalStorage()
     },
     deleteField(fieldId: number) {
       const index = this.fields.findIndex(f => f.id === fieldId)
       if (index !== -1) {
         this.fields.splice(index, 1)
-        this.saveToLocalStorage()
       }
     },
     toggleColumnVisibility() {
-      localStorage.setItem('config.columnVisibility', JSON.stringify(this.columnVisibility))
     },
     saveToLocalStorage() {
-      localStorage.setItem('config.fields', JSON.stringify(this.fields))
-      localStorage.setItem('config.nextId', String(this.nextId))
     },
     loadFromLocalStorage() {
-      const fieldsStr = localStorage.getItem('config.fields')
-      const nextIdStr = localStorage.getItem('config.nextId')
-      const columnVisibilityStr = localStorage.getItem('config.columnVisibility')
-
-      if (fieldsStr) {
-        this.fields = JSON.parse(fieldsStr)
-      }
-      if (nextIdStr) {
-        this.nextId = parseInt(nextIdStr, 10)
-      }
-      if (columnVisibilityStr) {
-        this.columnVisibility = JSON.parse(columnVisibilityStr)
-      }
-      this.initDefaultFields()
     },
     exportData() {
       const data = JSON.stringify(this.fields, null, 2)
@@ -144,7 +128,6 @@ export const useFieldStore = defineStore('field', {
         const text = await file.text()
         const data = JSON.parse(text) as DataField[]
         this.fields = data
-        this.saveToLocalStorage()
         return true
       } catch (error) {
         console.error('导入数据失败:', error)
