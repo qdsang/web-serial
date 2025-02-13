@@ -57,6 +57,7 @@ const onResize = (x: number, y: number, width: number, height: number, id: numbe
     item.width = snapToGrid(width)
     item.height = snapToGrid(height)
     saveLayout()
+    handleResize()
   }
 }
 
@@ -81,6 +82,13 @@ const saveLayout = () => {
   configManager.setConfig('canvas', { items: items.value })
 }
 
+let resizeTimer: number
+const handleResize = () => {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('resize', { }))
+  }, 100)
+}
 </script>
 
 <template>

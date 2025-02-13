@@ -55,6 +55,41 @@ onUnmounted(() => {
 
 <template>
   <div class="data-table-container">
+    <el-alert
+      type="info"
+      :closable="false"
+      class="mb-3"
+    >
+      <template #title>
+        <div class="flow-title">数据流转过程说明</div>
+      </template>
+      <div class="flow-content">
+        <div class="flow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <b>数据采集：</b>设备（串口/USB/蓝牙等）采集数据并发送
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <b>脚本处理：</b>数据进入脚本的 DataReceiver 函数进行处理， 可在脚本面板进行编辑
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <b>数据更新：</b>脚本通过 updateDataTable({key: value}) 更新数据表
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <b>显示输出：</b>脚本 return 的数据会显示在命令行面板
+          </div>
+        </div>
+      </div>
+    </el-alert>
     <div class="table-toolbar">
       <el-dropdown trigger="click">
         <el-button type="primary" size="small">
@@ -101,7 +136,7 @@ onUnmounted(() => {
     </div>
 
     <el-table :data="fieldStore.fields" border stripe>
-      <el-table-column label="操作" width="50" fixed="left">
+      <el-table-column label="操作" width="60" fixed="left">
         <template #default="{ row }">
           <div class="operation-buttons">
             <el-button @click="fieldStore.deleteField(row.id)" type="danger" size="small" circle>
@@ -215,5 +250,49 @@ onUnmounted(() => {
 .operation-buttons {
   display: flex;
   gap: 8px;
+}
+
+
+.mb-3 {
+  margin-bottom: 12px;
+}
+
+.flow-title {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.flow-content {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.step-number {
+  width: 20px;
+  height: 20px;
+  background-color: var(--el-color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-content b {
+  color: var(--el-color-primary);
 }
 </style>

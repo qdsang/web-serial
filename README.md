@@ -45,6 +45,8 @@ yarn preview
 ```
 
 https://github.com/devanlai/webstlink
+https://v2.tauri.app/zh-cn/start/
+https://github.com/mateosolinho/AeroTelemProc_VidData/tree/main
 
 ## 许可证
 

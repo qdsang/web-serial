@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import SerialConfig from './components/SerialConfig.vue'
 import SerialLog from './components/SerialLog.vue'
-import ChartRocket from './components/ChartRocket.vue'
+import PipelinePanel from './components/PipelinePanel.vue'
 import ChartIMU from './components/ChartIMU.vue'
 import ChartPanel from './components/ChartPanel.vue'
 import DataTable from './components/DataTable.vue'
@@ -87,17 +87,17 @@ handleResize()
             <el-tab-pane label="命令行">
               <SerialLog />
             </el-tab-pane>
-            <el-tab-pane label="可视化" lazy>
-              <ChartPanel />
-            </el-tab-pane>
             <el-tab-pane label="姿态" lazy>
               <ChartIMU />
             </el-tab-pane>
-            <el-tab-pane label="火箭" lazy>
-              <ChartRocket />
-            </el-tab-pane>
             <el-tab-pane label="数据表" lazy>
               <DataTable />
+            </el-tab-pane>
+            <el-tab-pane label="可视化" lazy>
+              <ChartPanel />
+            </el-tab-pane>
+            <el-tab-pane label="流程图">
+              <PipelinePanel />
             </el-tab-pane>
             <el-tab-pane label="画板" lazy>
               <CanvasPanel />
