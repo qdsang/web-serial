@@ -249,7 +249,7 @@
   dependencies:
     "@floating-ui/utils" "^0.2.9"
 
-"@floating-ui/dom@^1.0.1":
+"@floating-ui/dom@^1.0.1", "@floating-ui/dom@^1.6.13":
   version "1.6.13"
   resolved "https://repo.huaweicloud.com/repository/npm/@floating-ui/dom/-/dom-1.6.13.tgz#a8a938532aea27a95121ec16e667a7cbe8c59e34"
   integrity sha512-umqzocjDgNRGTuO7Q8CU32dkHkECqI8ZdMZ5Swb6QAM0t5rnlrN3lGo1hdpscRd3WS8T6DKYK4ephgIH9iRh3w==
@@ -262,10 +262,20 @@
   resolved "https://repo.huaweicloud.com/repository/npm/@floating-ui/utils/-/utils-0.2.9.tgz#50dea3616bc8191fb8e112283b49eaff03e78429"
   integrity sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==
 
+"@interactjs/types@1.10.27":
+  version "1.10.27"
+  resolved "https://repo.huaweicloud.com/repository/npm/@interactjs/types/-/types-1.10.27.tgz#10afd71cef2498e2b5192cf0d46f937d8ceb767f"
+  integrity sha512-BUdv0cvs4H5ODuwft2Xp4eL8Vmi3LcihK42z0Ft/FbVJZoRioBsxH+LlsBdK4tAie7PqlKGy+1oyOncu1nQ6eA==
+
 "@jridgewell/sourcemap-codec@^1.5.0":
   version "1.5.0"
   resolved "https://repo.huaweicloud.com/repository/npm/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.0.tgz#3188bcb273a414b0d215fd22a58540b989b9409a"
   integrity sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==
+
+"@juggle/resize-observer@^3.4.0":
+  version "3.4.0"
+  resolved "https://repo.huaweicloud.com/repository/npm/@juggle/resize-observer/-/resize-observer-3.4.0.tgz#08d6c5e20cf7e4cc02fd181c4b0c225cd31dbb60"
+  integrity sha512-dfLbk+PwWvFzSxwk3n5ySL0hfBog779o8h68wK/7/APo/7cgyWp5jcXockbxdk5kFRkbeXWm4Fbi9FrdN381sA==
 
 "@lezer/common@^1.0.0", "@lezer/common@^1.1.0", "@lezer/common@^1.2.0":
   version "1.2.3"
@@ -426,6 +436,20 @@
   version "0.0.20"
   resolved "https://repo.huaweicloud.com/repository/npm/@types/web-bluetooth/-/web-bluetooth-0.0.20.tgz#f066abfcd1cbe66267cdbbf0de010d8a41b41597"
   integrity sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==
+
+"@vexip-ui/hooks@^2.6.0":
+  version "2.8.0"
+  resolved "https://repo.huaweicloud.com/repository/npm/@vexip-ui/hooks/-/hooks-2.8.0.tgz#5f7c319b845341e7268c213c6536d05583c45a23"
+  integrity sha512-s522zFYSanWVwLCZeOgG+1h5O1TQ04U/RC7Ackb1ZqI0MuDHl9EonPN8fpa8XxtyPES2zlzDybYChizCED7V+A==
+  dependencies:
+    "@floating-ui/dom" "^1.6.13"
+    "@juggle/resize-observer" "^3.4.0"
+    "@vexip-ui/utils" "2.16.1"
+
+"@vexip-ui/utils@2.16.1", "@vexip-ui/utils@^2.16.1":
+  version "2.16.1"
+  resolved "https://repo.huaweicloud.com/repository/npm/@vexip-ui/utils/-/utils-2.16.1.tgz#a367e2607fc8872d39592089ccbe0adfcbbf5e95"
+  integrity sha512-P0xHHu7j1fXS+DLkVp6ipJNAM2QonymVsBUQai1Ym7/JPyZgHMeEOCMzAfJWwv/qLDfRk5XXJXDjRQDz/qlF7A==
 
 "@vitejs/plugin-vue@^5.2.1":
   version "5.2.1"
@@ -872,6 +896,15 @@ graceful-fs@^4.1.2:
   resolved "https://repo.huaweicloud.com/repository/npm/graceful-fs/-/graceful-fs-4.2.11.tgz#4183e4e8bf08bb6e05bbb2f7d2e0c8f712ca40e3"
   integrity sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==
 
+grid-layout-plus@^1.0.6:
+  version "1.0.6"
+  resolved "https://repo.huaweicloud.com/repository/npm/grid-layout-plus/-/grid-layout-plus-1.0.6.tgz#ae0107f473c0395314c85352705e0c95043e1f48"
+  integrity sha512-LyU2TWNMN4yXy2Y16sWWgghi35711onjkehbIyB8XCN/lSxNK7xoV0iphZ9LWZOw6lAM1+ngF56VVllviM8f4g==
+  dependencies:
+    "@vexip-ui/hooks" "^2.6.0"
+    "@vexip-ui/utils" "^2.16.1"
+    interactjs "^1.10.27"
+
 he@^1.2.0:
   version "1.2.0"
   resolved "https://repo.huaweicloud.com/repository/npm/he/-/he-1.2.0.tgz#84ae65fa7eafb165fddb61566ae14baf05664f0f"
@@ -888,6 +921,13 @@ image-size@~0.5.0:
   version "0.5.5"
   resolved "https://repo.huaweicloud.com/repository/npm/image-size/-/image-size-0.5.5.tgz#09dfd4ab9d20e29eb1c3e80b8990378df9e3cb9c"
   integrity sha512-6TDAlDPZxUFCv+fuOkIoXT/V/f3Qbq8e37p+YOiYrUv3v9cc3/6x78VdfPgFVaB9dZYeLUfKgHRebpkm/oP2VQ==
+
+interactjs@^1.10.27:
+  version "1.10.27"
+  resolved "https://repo.huaweicloud.com/repository/npm/interactjs/-/interactjs-1.10.27.tgz#16499aba4987a5ccfdaddca7d1ba7bb1118e14d0"
+  integrity sha512-y/8RcCftGAF24gSp76X2JS3XpHiUvDQyhF8i7ujemBz77hwiHDuJzftHx7thY8cxGogwGiPJ+o97kWB6eAXnsA==
+  dependencies:
+    "@interactjs/types" "1.10.27"
 
 is-what@^3.14.1:
   version "3.14.1"
