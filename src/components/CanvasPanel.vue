@@ -4,11 +4,28 @@ import { ConfigManager } from '../utils/ConfigManager'
 import ChartPanel from './ChartPanel.vue'
 import DataTable from './DataTable.vue'
 import ChartIMU from './ChartIMU.vue'
+import TimeRangeControl from './TimeRangeControl.vue'
 import { useDark } from '@vueuse/core'
 import { GridLayout, GridItem } from 'grid-layout-plus'
+import { useDataStore } from '../store/dataStore'
+import { EventCenter, EventNames } from '../utils/EventCenter'
 
 const configManager = ConfigManager.getInstance()
 const canvasConfig = configManager.useConfig('canvas')
+const dataStore = useDataStore()
+const eventCenter = EventCenter.getInstance()
+
+// 监听数据更新事件
+eventCenter.on(EventNames.DATA_UPDATE, (data: any) => {
+  const timestamp = Date.now()
+  const values: Record<string, number> = {}
+  Object.entries(data).forEach(([key, value]) => {
+    if (typeof value === 'number') {
+      values[key] = value
+    }
+  })
+  dataStore.addDataPoint(timestamp, values)
+})
 
 interface CanvasItem {
   id: number
@@ -201,6 +218,7 @@ const viewItem = (item: CanvasItem) => {
           </div>
         </grid-item>
       </grid-layout>
+      <TimeRangeControl class="time-range-control" />
     </div>
   </div>
 </template>
@@ -294,5 +312,13 @@ const viewItem = (item: CanvasItem) => {
   flex: 1;
   overflow: hidden;
   position: relative;
+}
+
+.time-range-control {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
 }
 </style>

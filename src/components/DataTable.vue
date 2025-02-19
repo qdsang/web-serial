@@ -146,31 +146,31 @@ onUnmounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.key" label="Key" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.key" label="Key" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.key" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.name" label="字段名" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.name" label="字段名" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.name" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.keyAddr" label="内存地址" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.keyAddr" label="内存地址" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.keyAddr" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.keySize" label="内存大小" min-width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.keySize" label="内存大小" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.keySize" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.dataType" label="数据类型" min-width="80">
+      <el-table-column v-if="fieldStore.columnVisibility.dataType" label="数据类型" sortable min-width="80">
         <template #default="{ row }">
           <el-select v-model="row.dataType" size="small" @change="updateField">
             <el-option label="数字" value="number" />
@@ -211,7 +211,7 @@ onUnmounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.lastUpdate" label="最后更新" min-width="120">
+      <el-table-column v-if="fieldStore.columnVisibility.lastUpdate" label="最后更新" sortable min-width="120">
         <template #default="{ row }">
           <el-tooltip :content="new Date(row.lastUpdate).toLocaleString()" placement="top" effect="dark">
             <span>{{ new Date(row.lastUpdate).toLocaleTimeString() + '.' + String(new Date(row.lastUpdate).getMilliseconds()).padStart(3, '0') }}</span>
@@ -219,7 +219,7 @@ onUnmounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.updateCount" label="更新次数" width="100">
+      <el-table-column v-if="fieldStore.columnVisibility.updateCount" label="更新次数" sortable width="100">
         <template #default="{ row }">
           <span>{{ row.updateCount }}</span>
         </template>
